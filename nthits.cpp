@@ -1,10 +1,15 @@
 #include <iostream>
+#include <iomanip>
 #include <string>
 #include <fstream>
 #include <sstream>
 #include <vector>
 #include "ntHashIterator.hpp"
 #include "CBFilter.hpp"
+
+#ifdef _OPENMP
+# include <omp.h>
+#endif
 
 
 #define PROGRAM "nthits"
@@ -30,14 +35,13 @@ static const char USAGE_MESSAGE[] =
 using namespace std;
 
 namespace opt {
+    unsigned nThrd=8;
     unsigned k = 32;
-    uint64_t relZero = 0;
-    size_t hitSize = 0;
-    size_t maxSize = 1000000;
-    size_t counter=0;
+    size_t cbfSize = 110000000;
+    size_t hitSize = 1000000;
+    unsigned hitCap = 20;
+    size_t counter = 0;
 }
-
-
 
 struct entry {
     string kmer;
@@ -45,20 +49,22 @@ struct entry {
 };
 
 bool hitSearchInsert(const uint64_t kint, const string &kmer, entry *T){
-    ++opt::counter;
     uint64_t i=0, j;
     do {
-        j = (kint + i) % opt::maxSize;
+        j = (kint + i) % opt::hitSize;
         if (T[j].kmer == kmer) {
+            #pragma omp atomic
             T[j].count = T[j].count+1;
-            //cerr << opt::counter << "\t" << i << ":" << j << "\ttrue\t" << T[j].kmer << "\t" << T[j].count << endl;
             return true;
         }
         ++i;
-    }while (i!= opt::maxSize && T[j].count!=0);
+    } while (i!= opt::hitSize && T[j].count!=0);
     if (T[i].count == 0) {
-        T[j].kmer = kmer;
-        T[j].count = 1;
+        #pragma omp critical (hashUpdate)
+        {
+            T[j].kmer = kmer;
+            T[j].count = 1;
+        }
         return false;
     }
     return false;
@@ -66,42 +72,54 @@ bool hitSearchInsert(const uint64_t kint, const string &kmer, entry *T){
 
 int main(int argc, char** argv) {
 
-    clock_t sTime = clock();
+    double sTime = omp_get_wtime();
 
-    //size_t opt::maxSize = ntCard(file);
-    size_t F0 = 110000000;
-    entry *hitTable = new entry [opt::maxSize];
-    for (unsigned i=0; i<opt::maxSize; i++) {
+    opt::hitSize = 36000000;
+    opt::cbfSize = 3100000000;
+    opt::hitCap = 40;
+    entry *hitTable = new entry [opt::hitSize];
+    for (unsigned i=0; i<opt::hitSize; i++) {
         //hitTable[i].kmer = "";
         hitTable[i].count = 0;
     }
 
-    CBFilter myCBF(F0, 3, opt::k); 
-    ifstream mFile(argv[1]);
+    CBFilter myCBF(opt::cbfSize, 3, opt::k, opt::hitCap);
+    ifstream in(argv[1]);
     
-    string rHead,rSeqs, rDirc, rQual;
-    while(getline(mFile,rHead)&&getline(mFile,rSeqs)&&getline(mFile,rDirc)&&getline(mFile, rQual)) {
-        ntHashIterator itr(rSeqs, 3, opt::k);
-        while (itr != itr.end()) {
-            //string myKmer = rSeqs.substr(i,opt::k);
-            if(myCBF.insert_and_test(*itr))
-                hitSearchInsert((*itr)[0], rSeqs.substr(itr.pos(),opt::k), hitTable);
-            ++itr;
+#ifdef _OPENMP
+    omp_set_num_threads(opt::nThrd);
+#endif
+
+    
+    bool good = true;
+    #pragma omp parallel
+    for(string rSeqs, hseq; good;) {
+        #pragma omp critical(in)
+        {
+            good = static_cast<bool>(getline(in, hseq));
+            good = static_cast<bool>(getline(in, rSeqs));
+            good = static_cast<bool>(getline(in, hseq));
+            good = static_cast<bool>(getline(in, hseq));
+        }
+        if(good) {
+            ntHashIterator itr(rSeqs, 3, opt::k);
+            while (itr != itr.end()) {
+                if(myCBF.insert_and_test(*itr))
+                    hitSearchInsert((*itr)[0], rSeqs.substr(itr.pos(),opt::k), hitTable);
+                ++itr;
+            }
         }
     }
-    mFile.close();
+    in.close();
     
     ofstream outFile("hmers");
-    for (unsigned i=0; i<opt::maxSize; i++)
+    for (unsigned i=0; i<opt::hitSize; i++)
         if(hitTable[i].count != 0)
-            outFile << hitTable[i].kmer << "\t" << hitTable[i].count << "\n";
-    
-    //cerr << "relZero=" << opt::relZero << endl;
-
+            outFile << hitTable[i].kmer << "\t" << hitTable[i].count + opt::hitCap  << "\n";
     
     outFile.close();
     delete [] hitTable;
     
-    std::cerr << (double)(clock() - sTime)/CLOCKS_PER_SEC << "\n";
+    cerr << "time(sec): " <<setprecision(4) << fixed << omp_get_wtime() - sTime << "\n";
     return 0;
 }

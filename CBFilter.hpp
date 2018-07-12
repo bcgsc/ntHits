@@ -37,19 +37,19 @@ public:
         myFile.close();
     }
 
-    CBFilter(size_t filterSize, unsigned hashNum, unsigned kmerSize):
-        m_size(filterSize), m_hashNum(hashNum), m_kmerSize(kmerSize) {
+    CBFilter(size_t filterSize, unsigned hashNum, unsigned kmerSize, unsigned repCap):
+    m_size(filterSize), m_hashNum(hashNum), m_kmerSize(kmerSize), m_reCap(repCap) {
         m_filter = new unsigned char [m_size];
         for(size_t i = 0; i < m_size; i++)
             m_filter[i]=0;
     }
 
+    
     bool insert_and_test(const uint64_t *hVal) {
         for (unsigned i = 0; i < m_hashNum; i++) {
             size_t hLoc = hVal[i] % m_size;
             unsigned char old_byte = __sync_fetch_and_add(&m_filter[hLoc],1);
-            if(old_byte <= 20)
-		return false;
+            if(old_byte <= m_reCap) return false;
         }
         return true;
     }
@@ -74,6 +74,7 @@ private:
     size_t m_size;
     unsigned m_hashNum;
     unsigned m_kmerSize;
+    unsigned m_reCap;
 };
 
 #endif /* CBFILTER_H_ */
