@@ -28,15 +28,6 @@ using namespace std;
 class CBFilter {
 public:
 
-    CBFilter(size_t filterSize, unsigned hashNum, unsigned kmerSize, const char * fPath):
-        m_size(filterSize), m_hashNum(hashNum), m_kmerSize(kmerSize) {
-        m_filter = new unsigned char [m_size];
-        ifstream myFile(fPath, ios::in | ios::binary);
-        myFile.seekg (0, ios::beg);
-        myFile.read ((char *)m_filter, m_size);
-        myFile.close();
-    }
-
     CBFilter(size_t filterSize, unsigned hashNum, unsigned kmerSize, unsigned repCap):
     m_size(filterSize), m_hashNum(hashNum), m_kmerSize(kmerSize), m_reCap(repCap) {
         m_filter = new unsigned char [m_size];
@@ -46,22 +37,16 @@ public:
 
     
     bool insert_and_test(const uint64_t *hVal) {
+        bool lessFlag = true;
         for (unsigned i = 0; i < m_hashNum; i++) {
             size_t hLoc = hVal[i] % m_size;
-            unsigned char old_byte = __sync_fetch_and_add(&m_filter[hLoc],1);
-            if(old_byte <= m_reCap) return false;
+            if(m_filter[hLoc] < m_reCap) {
+                #pragma omp atomic
+                ++m_filter[hLoc];
+                lessFlag = false;
+            }
         }
-        return true;
-    }
-
-    void storeFilter(const char * fPath) const {
-        ofstream myFile(fPath, ios::out | ios::binary);
-        myFile.write(reinterpret_cast<char*>(m_filter), m_size);
-        myFile.close();
-    }
-
-    unsigned getKmerSize() const {
-        return m_kmerSize;
+        return lessFlag;
     }
 
     ~CBFilter() {

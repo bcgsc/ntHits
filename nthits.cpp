@@ -5,6 +5,7 @@
 #include <sstream>
 #include <vector>
 #include "ntHashIterator.hpp"
+#include "ntcard.hpp"
 #include "CBFilter.hpp"
 
 #ifdef _OPENMP
@@ -35,13 +36,66 @@ static const char USAGE_MESSAGE[] =
 using namespace std;
 
 namespace opt {
-    unsigned nThrd=8;
-    unsigned k = 32;
-    size_t cbfSize = 110000000;
-    size_t hitSize = 1000000;
-    unsigned hitCap = 20;
-    size_t counter = 0;
+    unsigned j = 24;
+    unsigned k = 64;
+    unsigned h = 3;
+    unsigned bits = 5;
+    size_t cbfSize;
+    size_t hitSize;
+    unsigned hitCap;
 }
+
+
+static const unsigned char b2r[256] = {
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', //0
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', //1
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', //2
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', //3
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'T', 'N', 'G', 'N', 'N', 'N', 'C', //4   'A' 'C' 'G'
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'N', 'N', 'N', 'A', 'N', 'N', 'N', //5   'T'
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'T', 'N', 'G', 'N', 'N', 'N', 'C', //6   'a' 'c' 'g'
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'N', 'N', 'N', 'A', 'N', 'N', 'N', //7   't'
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', //8
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', //9
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', //10
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', //11
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', //12
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', //13
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', //14
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', //15
+    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N'
+};
+
+void getCanon(std::string &bMer) {
+    int p=0, hLen=(bMer.length()-1)/2;
+    while (bMer[p] == b2r[(unsigned char)bMer[bMer.length()-1-p]]) {
+        ++p;
+        if(p>=hLen) break;
+    }
+    if (bMer[p] > b2r[(unsigned char)bMer[bMer.length()-1-p]]) {
+        for (int lIndex = p, rIndex = bMer.length()-1-p; lIndex<=rIndex; ++lIndex,--rIndex) {
+            char tmp = b2r[(unsigned char)bMer[rIndex]];
+            bMer[rIndex] = b2r[(unsigned char)bMer[lIndex]];
+            bMer[lIndex] = tmp;
+        }
+    }
+}
+
 
 struct entry {
     string kmer;
@@ -54,16 +108,16 @@ bool hitSearchInsert(const uint64_t kint, const string &kmer, entry *T){
         j = (kint + i) % opt::hitSize;
         if (T[j].kmer == kmer) {
             #pragma omp atomic
-            T[j].count = T[j].count+1;
+            ++T[j].count;
             return true;
         }
         ++i;
     } while (i!= opt::hitSize && T[j].count!=0);
-    if (T[i].count == 0) {
-        #pragma omp critical (hashUpdate)
+    if (T[j].count == 0) {
+        #pragma omp critical (T)
         {
             T[j].kmer = kmer;
-            T[j].count = 1;
+            ++T[j].count;
         }
         return false;
     }
@@ -73,24 +127,37 @@ bool hitSearchInsert(const uint64_t kint, const string &kmer, entry *T){
 int main(int argc, char** argv) {
 
     double sTime = omp_get_wtime();
-
-    opt::hitSize = 36000000;
-    opt::cbfSize = 3100000000;
+    
+    vector<string> inFiles;
+    inFiles.push_back(argv[1]);
+    
+    opt::h = atoi(argv[2]);
+    opt::bits = atoi(argv[3]);
+    size_t histArray[10002];
+    getHist(inFiles, opt::k, opt::j, histArray);
+    
+    opt::cbfSize = opt::bits*histArray[1];//3*histArray[1]; // *5=
     opt::hitCap = 40;
+    //opt::hitSize = 25522210;
+    opt::hitSize = histArray[1];
+    for(unsigned i=2; i<=opt::hitCap; i++)
+        opt::hitSize -= histArray[i];
+    opt::hitSize *= 5;
+    
+	cerr << opt::cbfSize << "\t" << opt::hitSize << "\n\n\n";	
+
     entry *hitTable = new entry [opt::hitSize];
     for (unsigned i=0; i<opt::hitSize; i++) {
-        //hitTable[i].kmer = "";
         hitTable[i].count = 0;
     }
 
-    CBFilter myCBF(opt::cbfSize, 3, opt::k, opt::hitCap);
+    CBFilter myCBF(opt::cbfSize, opt::h, opt::k, opt::hitCap);
     ifstream in(argv[1]);
     
 #ifdef _OPENMP
-    omp_set_num_threads(opt::nThrd);
+    omp_set_num_threads(opt::j);
 #endif
 
-    
     bool good = true;
     #pragma omp parallel
     for(string rSeqs, hseq; good;) {
@@ -102,10 +169,13 @@ int main(int argc, char** argv) {
             good = static_cast<bool>(getline(in, hseq));
         }
         if(good) {
-            ntHashIterator itr(rSeqs, 3, opt::k);
+            ntHashIterator itr(rSeqs, opt::h, opt::k);
             while (itr != itr.end()) {
-                if(myCBF.insert_and_test(*itr))
-                    hitSearchInsert((*itr)[0], rSeqs.substr(itr.pos(),opt::k), hitTable);
+                if(myCBF.insert_and_test(*itr)) {
+                    string canonKmer = rSeqs.substr(itr.pos(),opt::k);
+                    getCanon(canonKmer);
+                    hitSearchInsert((*itr)[0], canonKmer, hitTable);
+                }
                 ++itr;
             }
         }
