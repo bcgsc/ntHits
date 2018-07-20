@@ -20,10 +20,8 @@
 #include <getopt.h>
 #include <cassert>
 #include <cmath>
-
-
 #include "ntHashIterator.hpp"
-#include "Uncompress.h"
+
 
 #ifdef _OPENMP
 # include <omp.h>

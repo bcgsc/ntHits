@@ -8,6 +8,8 @@
 #include "ntcard.hpp"
 #include "CBFilter.hpp"
 
+#include "Uncompress.h"
+
 #ifdef _OPENMP
 # include <omp.h>
 #endif
@@ -36,7 +38,7 @@ static const char USAGE_MESSAGE[] =
 using namespace std;
 
 namespace opt {
-    unsigned j = 24;
+    unsigned j = 16;
     unsigned k = 64;
     unsigned h = 3;
     unsigned bits = 5;
@@ -138,7 +140,6 @@ int main(int argc, char** argv) {
     
     opt::cbfSize = opt::bits*histArray[1];//3*histArray[1]; // *5=
     opt::hitCap = 40;
-    //opt::hitSize = 25522210;
     opt::hitSize = histArray[1];
     for(unsigned i=2; i<=opt::hitCap; i++)
         opt::hitSize -= histArray[i];
@@ -148,6 +149,7 @@ int main(int argc, char** argv) {
 
     entry *hitTable = new entry [opt::hitSize];
     for (unsigned i=0; i<opt::hitSize; i++) {
+        hitTable[i].kmer = "";
         hitTable[i].count = 0;
     }
 
@@ -181,6 +183,7 @@ int main(int argc, char** argv) {
         }
     }
     in.close();
+    
     
     ofstream outFile("hmers");
     for (unsigned i=0; i<opt::hitSize; i++)
