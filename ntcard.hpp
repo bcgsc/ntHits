@@ -17,7 +17,6 @@
 #include <sstream>
 #include <vector>
 #include <cstdlib>
-#include <getopt.h>
 #include <cassert>
 #include <cmath>
 #include "ntHashIterator.hpp"
@@ -30,7 +29,7 @@
 
 using namespace std;
 
-namespace opt {
+namespace nts {
 unsigned nThrd=1;
 unsigned kmLen=64;
 size_t rBuck;
@@ -41,22 +40,6 @@ unsigned covMax=10000;
 size_t nSamp=2;
 bool samH=true;
 }
-
-static const char shortopts[] = "t:s:r:k:c:l:p:f:";
-
-enum { OPT_HELP = 1, OPT_VERSION };
-
-static const struct option longopts[] = {
-    { "threads",	required_argument, NULL, 't' },
-    { "kmer",	required_argument, NULL, 'k' },
-    { "cov",	required_argument, NULL, 'c' },
-    { "rbit",	required_argument, NULL, 'r' },
-    { "sbit",	required_argument, NULL, 's' },
-    { "pref",	required_argument, NULL, 'p' },
-    { "help",	no_argument, NULL, OPT_HELP },
-    { "version",	no_argument, NULL, OPT_VERSION },
-    { NULL, 0, NULL, 0 }
-};
 
 size_t getInf(const char* inFile) {
     std::ifstream in(inFile, std::ifstream::ate | std::ifstream::binary);
@@ -84,7 +67,7 @@ unsigned getftype(std::ifstream &in, std::string &samSeq) {
     std::string s1,s2,s3,s4,s5,s6,s7,s8,s9,s10, s11;
     alnSec>>s1>>s2>>s3>>s4>>s5>>s6>>s7>>s8>>s9>>s10>>s11;
     if((s2.find_first_not_of("0123456789") == std::string::npos) && (s5.find_first_not_of("0123456789") == std::string::npos)) {
-        opt::samH=false;
+        nts::samH=false;
         samSeq=hseq;
         return 2;
     }
@@ -92,19 +75,19 @@ unsigned getftype(std::ifstream &in, std::string &samSeq) {
 }
 
 inline void ntComp(const uint64_t hVal, uint16_t *t_Counter) {
-    uint64_t indBit=opt::nSamp;
-    if(hVal>>(63-opt::sBits) == 1) indBit=0;
-    if(hVal>>(64-opt::sBits) == opt::sMask) indBit=1;
-    if(indBit < opt::nSamp) {
-        size_t shVal=hVal&(opt::rBuck-1);
+    uint64_t indBit=nts::nSamp;
+    if(hVal>>(63-nts::sBits) == 1) indBit=0;
+    if(hVal>>(64-nts::sBits) == nts::sMask) indBit=1;
+    if(indBit < nts::nSamp) {
+        size_t shVal=hVal&(nts::rBuck-1);
         #pragma omp atomic
-        ++t_Counter[indBit*opt::rBuck+shVal];
+        ++t_Counter[indBit*nts::rBuck+shVal];
     }
 
 }
 
 inline void ntRead(const string &seq, uint16_t *t_Counter, size_t &totKmer) {
-    ntHashIterator itr(seq, 1, opt::kmLen);
+    ntHashIterator itr(seq, 1, nts::kmLen);
     while (itr != itr.end()) {
         ntComp((*itr)[0],t_Counter);
         ++itr;
@@ -140,7 +123,7 @@ void getEfa(std::ifstream &in, uint16_t *t_Counter, size_t &totKmer) {
 void getEsm(std::ifstream &in, const std::string &samSeq, uint16_t *t_Counter, size_t &totKmer) {
     std::string samLine,seq;
     std::string s1,s2,s3,s4,s5,s6,s7,s8,s9,s11;
-    if(opt::samH) {
+    if(nts::samH) {
         while(getline(in,samLine))
             if (samLine[0]!='@') break;
     }
@@ -154,31 +137,31 @@ void getEsm(std::ifstream &in, const std::string &samSeq, uint16_t *t_Counter, s
 }
 
 void compEst(const uint16_t *t_Counter, double &F0Mean, double fMean[]) {
-    unsigned p[opt::nSamp][65536];
-    for(size_t i=0; i<opt::nSamp; i++)
+    unsigned p[nts::nSamp][65536];
+    for(size_t i=0; i<nts::nSamp; i++)
         for(size_t j=0; j<65536; j++)
             p[i][j]=0;
 
-    for(size_t i=0; i<opt::nSamp; i++)
-        for(size_t j=0; j<opt::rBuck; j++)
-            ++p[i][t_Counter[i*opt::rBuck+j]];
+    for(size_t i=0; i<nts::nSamp; i++)
+        for(size_t j=0; j<nts::rBuck; j++)
+            ++p[i][t_Counter[i*nts::rBuck+j]];
 
     double pMean[65536];
     for(size_t i=0; i<65536; i++) pMean[i]=0.0;
     for(size_t i=0; i<65536; i++) {
-        for(size_t j=0; j<opt::nSamp; j++)
+        for(size_t j=0; j<nts::nSamp; j++)
             pMean[i]+=p[j][i];
-        pMean[i] /= 1.0*opt::nSamp;
+        pMean[i] /= 1.0*nts::nSamp;
     }
 
-    F0Mean= (ssize_t)((opt::rBits*log(2)-log(pMean[0])) * 1.0* ((size_t)1<<(opt::sBits+opt::rBits)));
+    F0Mean= (ssize_t)((nts::rBits*log(2)-log(pMean[0])) * 1.0* ((size_t)1<<(nts::sBits+nts::rBits)));
     for(size_t i=0; i<65536; i++) fMean[i]=0;
-    fMean[1]= -1.0*pMean[1]/(pMean[0]*(log(pMean[0])-opt::rBits*log(2)));
+    fMean[1]= -1.0*pMean[1]/(pMean[0]*(log(pMean[0])-nts::rBits*log(2)));
     for(size_t i=2; i<65536; i++) {
         double sum=0.0;
         for(size_t j=1; j<i; j++)
             sum+=j*pMean[i-j]*fMean[j];
-        fMean[i]=-1.0*pMean[i]/(pMean[0]*(log(pMean[0])-opt::rBits*log(2)))-sum/(i*pMean[0]);
+        fMean[i]=-1.0*pMean[i]/(pMean[0]*(log(pMean[0])-nts::rBits*log(2)))-sum/(i*pMean[0]);
     }
     for(size_t i=1; i<65536; i++)
         fMean[i]=abs((ssize_t)(fMean[i]*F0Mean));
@@ -188,22 +171,22 @@ void getHist(const vector<string> &inFiles, const unsigned kLen, const unsigned 
 
     double sTime = omp_get_wtime();
 
-    opt::nThrd = nThr;
-    opt::kmLen = kLen;
+    nts::nThrd = nThr;
+    nts::kmLen = kLen;
     
     size_t totalSize=0;
     for (unsigned file_i = 0; file_i < inFiles.size(); ++file_i)
         totalSize += getInf(inFiles[file_i].c_str());
-    if(totalSize<50000000000) opt::sBits=7;
+    if(totalSize<50000000000) nts::sBits=7;
 
     size_t totalKmers = 0;
 
-    opt::rBuck = ((size_t)1) << opt::rBits;
-    opt::sMask = (((size_t)1) << (opt::sBits-1))-1;
-    uint16_t *t_Counter = new uint16_t [opt::nSamp*opt::rBuck]();
+    nts::rBuck = ((size_t)1) << nts::rBits;
+    nts::sMask = (((size_t)1) << (nts::sBits-1))-1;
+    uint16_t *t_Counter = new uint16_t [nts::nSamp*nts::rBuck]();
 
 #ifdef _OPENMP
-    omp_set_num_threads(opt::nThrd);
+    omp_set_num_threads(nts::nThrd);
 #endif
 
     #pragma omp parallel for schedule(dynamic)
@@ -232,10 +215,10 @@ void getHist(const vector<string> &inFiles, const unsigned kLen, const unsigned 
     compEst(t_Counter, F0Mean, fMean);
     histArray[0] = totalKmers;
     histArray[1] = (size_t)F0Mean;
-    for(size_t i=2; i<= opt::covMax+1; i++)
+    for(size_t i=2; i<= nts::covMax+1; i++)
         histArray[i] = (size_t)fMean[i-1];
     delete [] t_Counter;
-    std::cerr << "Runtime(sec): " <<setprecision(4) << fixed << omp_get_wtime() - sTime << "\n";
+    std::cerr << "Reapeat profile estimated using ntCard in (sec): " <<setprecision(4) << fixed << omp_get_wtime() - sTime << "\n";
 }
 #endif /* NTCARD_H_ */
 
