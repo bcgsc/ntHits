@@ -50,7 +50,7 @@ namespace opt {
 unsigned j = 16;
 unsigned k = 64;
 unsigned h = 2;
-unsigned hitCap=40;
+unsigned hitCap=50;
 unsigned bits = 3;
 size_t cbfSize;
 size_t hitSize;
@@ -279,10 +279,11 @@ int main(int argc, char** argv) {
         opt::hitSize -= histArray[i];
     opt::hitSize *= 5;
 
+    cerr << "Approximate# of distinct k-mers: " << histArray[1] << "\n";
+    cerr << "Approximate# of heavy hitter k-mers: " << opt::hitSize/5 << "\n";
 
     entry *hitTable = new entry [opt::hitSize];
-    for (unsigned i=0; i<opt::hitSize; i++) {
-        hitTable[i].kmer = "";
+    for (size_t i=0; i<opt::hitSize; i++) {
         hitTable[i].count = 0;
     }
 
@@ -325,7 +326,7 @@ int main(int argc, char** argv) {
     else
         hstm << opt::prefix << "_k" << opt::k << ".rep";
     ofstream outFile(hstm.str().c_str());
-    for (unsigned i=0; i<opt::hitSize; i++)
+    for (size_t i=0; i<opt::hitSize; i++)
         if(hitTable[i].count != 0)
             outFile << hitTable[i].kmer << "\t" << hitTable[i].count + opt::hitCap  << "\n";
     outFile.close();
