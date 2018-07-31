@@ -47,11 +47,11 @@ static const char USAGE_MESSAGE[] =
 using namespace std;
 
 namespace opt {
-unsigned j = 16;
-unsigned k = 64;
-unsigned h = 2;
-unsigned hitCap=50;
-unsigned bits = 3;
+size_t j = 16;
+size_t k = 64;
+size_t h = 2;
+size_t hitCap=50;
+size_t bits = 3;
 size_t cbfSize;
 size_t hitSize;
 string prefix;
@@ -281,6 +281,7 @@ int main(int argc, char** argv) {
 
     cerr << "Approximate# of distinct k-mers: " << histArray[1] << "\n";
     cerr << "Approximate# of heavy hitter k-mers: " << opt::hitSize/5 << "\n";
+
 
     entry *hitTable = new entry [opt::hitSize];
     for (size_t i=0; i<opt::hitSize; i++) {

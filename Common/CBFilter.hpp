@@ -35,15 +35,24 @@ public:
             m_filter[i]=0;
     }
 
-    
     bool insert_and_test(const uint64_t *hVal) {
         bool lessFlag = true;
+        unsigned minCount = 256;
         for (unsigned i = 0; i < m_hashNum; i++) {
             size_t hLoc = hVal[i] % m_size;
             if(m_filter[hLoc] < m_reCap) {
-                #pragma omp atomic
-                ++m_filter[hLoc];
+                if(m_filter[hLoc] < minCount)
+                    minCount = m_filter[hLoc];
                 lessFlag = false;
+            }
+        }
+        if(!lessFlag) {
+            for (unsigned i = 0; i < m_hashNum; i++) {
+                size_t hLoc = hVal[i] % m_size;
+                if(m_filter[hLoc] == minCount) {
+                    #pragma omp atomic
+                    ++m_filter[hLoc];
+                }
             }
         }
         return lessFlag;
