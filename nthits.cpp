@@ -1,5 +1,6 @@
 #include <iostream>
 #include <iomanip>
+#include <cmath>
 #include <string>
 #include <fstream>
 #include <sstream>
@@ -9,6 +10,7 @@
 
 #include "ntHashIterator.hpp"
 #include "ntcard.hpp"
+#include "BloomFilter.hpp"
 #include "CBFilter.hpp"
 
 #include "Uncompress.h"
@@ -21,7 +23,7 @@
 #define PROGRAM "nthits"
 
 static const char VERSION_MESSAGE[] =
-    PROGRAM " Version 0.0.1 \n"
+    PROGRAM " 0.1.0 \n"
     "Written by Hamid Mohamadi.\n"
     "Copyright 2018 Canada's Michael Smith Genome Science Centre\n";
 
@@ -32,14 +34,15 @@ static const char USAGE_MESSAGE[] =
     "\n"
     " Options:\n"
     "\n"
-    "  -j, --threads=N	use N parallel threads [16]\n"
+    "  -t, --threads=N	use N parallel threads [16]\n"
     "  -k, --kmer=N	the length of kmer [64]\n"
     "  -c, --cutoff=N	the maximum coverage of kmer in output [40]\n"
     "  -b, --bit=N	the number of counter per distict k-mer [64]\n"
     "  -p, --pref=STRING	the prefix for output file name [repeat]\n"
-
-    "      --help	display this help and exit\n"
-    "      --version	output version information and exit\n"
+    "  --outbloom	output the most frequet k-mers in a Bloom filter\n"
+    "  --solid	output the solid k-mers (non-errornous k-mers)\n"
+    "  --help	display this help and exit\n"
+    "  --version	output version information and exit\n"
     "\n"
     "Report bugs to hmohamadi@bcgsc.ca.\n";
 
@@ -47,27 +50,39 @@ static const char USAGE_MESSAGE[] =
 using namespace std;
 
 namespace opt {
-size_t j = 16;
+size_t t = 16;
 size_t k = 64;
 size_t h = 2;
-size_t hitCap=50;
-size_t bits = 3;
+size_t hitCap=0;
+size_t bytes = 3;
+size_t bits = 7;
+size_t dbfSize;
 size_t cbfSize;
 size_t hitSize;
 string prefix;
+size_t F0;
+size_t f1;
+size_t fr;
+int outbloom=0;
+int solid=0;
 }
 
-static const char shortopts[] = "j:h:k:b::p:c:";
+static const char shortopts[] = "t:h:k:b:p:r:c:F:f:";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
 static const struct option longopts[] = {
-    { "threads",	required_argument, NULL, 'j' },
+    { "threads",	required_argument, NULL, 't' },
     { "kmer",	required_argument, NULL, 'k' },
     { "hash",	required_argument, NULL, 'h' },
     { "bit",	required_argument, NULL, 'b' },
     { "cutoff",	required_argument, NULL, 'c' },
+    { "F0",	required_argument, NULL, 'F' },
+    { "fr",	required_argument, NULL, 'r' },
+    { "f1",	required_argument, NULL, 'f' },
     { "prefix",	required_argument, NULL, 'p' },
+    { "outbloom",	no_argument, &opt::outbloom, 1},
+    { "solid",	no_argument, &opt::solid, 1},
     { "help",	no_argument, NULL, OPT_HELP },
     { "version",	no_argument, NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -126,7 +141,7 @@ void getCanon(std::string &bMer) {
 
 struct entry {
     string kmer;
-    size_t count;
+    unsigned count;
 };
 
 bool hitSearchInsert(const uint64_t kint, const string &kmer, omp_lock_t *locks, entry *T) {
@@ -150,7 +165,7 @@ bool hitSearchInsert(const uint64_t kint, const string &kmer, omp_lock_t *locks,
     return false;
 }
 
-void fqHit(std::ifstream &in, omp_lock_t *locks, CBFilter &myCBF, entry *hitTable) {
+void fqHit(std::ifstream &in, omp_lock_t *locks, BloomFilter &mydBF, CBFilter &mycBF, entry *hitTable) {
     bool good, good2 =true;
     #pragma omp parallel
     for(string rSeqs, hseq; good2;) {
@@ -162,12 +177,19 @@ void fqHit(std::ifstream &in, omp_lock_t *locks, CBFilter &myCBF, entry *hitTabl
             good2 = static_cast<bool>(getline(in, hseq));
         }
         if(good) {
-            ntHashIterator itr(rSeqs, opt::h, opt::k);
+            ntHashIterator itr(rSeqs, opt::h + 1, opt::k);
             while (itr != itr.end()) {
-                if(myCBF.insert_and_test(*itr)) {
+                if(!mydBF.insert_make_change(*itr)) {
                     string canonKmer = rSeqs.substr(itr.pos(),opt::k);
                     getCanon(canonKmer);
-                    hitSearchInsert((*itr)[0], canonKmer, locks, hitTable);
+                    if(opt::hitCap > 1) {
+                        if(mycBF.insert_and_test(*itr)) {
+                            hitSearchInsert((*itr)[0], canonKmer, locks, hitTable);
+                        }
+                    } else {
+
+                        hitSearchInsert((*itr)[0], canonKmer, locks, hitTable);
+                    }
                 }
                 ++itr;
             }
@@ -175,7 +197,7 @@ void fqHit(std::ifstream &in, omp_lock_t *locks, CBFilter &myCBF, entry *hitTabl
     }
 }
 
-void faHit(std::ifstream &in, omp_lock_t *locks, CBFilter &myCBF, entry *hitTable) {
+void faHit(std::ifstream &in, omp_lock_t *locks, BloomFilter &mydBF, CBFilter &mycBF, entry *hitTable) {
     bool good = true;
     #pragma omp parallel
     for(string seq, hseq; good;) {
@@ -190,10 +212,67 @@ void faHit(std::ifstream &in, omp_lock_t *locks, CBFilter &myCBF, entry *hitTabl
         }
         ntHashIterator itr(rSeqs, opt::h, opt::k);
         while (itr != itr.end()) {
-            if(myCBF.insert_and_test(*itr)) {
-                string canonKmer = rSeqs.substr(itr.pos(),opt::k);
-                getCanon(canonKmer);
-                hitSearchInsert((*itr)[0], canonKmer, locks, hitTable);
+            if(!mydBF.insert_make_change(*itr))
+                if(mycBF.insert_and_test(*itr)) {
+                    string canonKmer = rSeqs.substr(itr.pos(),opt::k);
+                    getCanon(canonKmer);
+                    hitSearchInsert((*itr)[0], canonKmer, locks, hitTable);
+                }
+            ++itr;
+        }
+    }
+}
+
+void bfqHit(std::ifstream &in, BloomFilter &mydBF, CBFilter &mycBF, BloomFilter &myhBF) {
+    bool good, good2 =true;
+    #pragma omp parallel
+    for(string rSeqs, hseq; good2;) {
+        #pragma omp critical(in)
+        {
+            good = static_cast<bool>(getline(in, rSeqs));
+            good = static_cast<bool>(getline(in, hseq));
+            good = static_cast<bool>(getline(in, hseq));
+            good2 = static_cast<bool>(getline(in, hseq));
+        }
+        if(good) {
+            ntHashIterator itr(rSeqs, opt::h+1, opt::k);
+            while (itr != itr.end()) {
+                if(!mydBF.insert_make_change(*itr)) {
+                    if(opt::hitCap > 1) {
+                        if(mycBF.insert_and_test(*itr))
+                            myhBF.insert(*itr);
+                    } else {
+                        myhBF.insert(*itr);
+                    }
+                }
+                ++itr;
+            }
+        }
+    }
+}
+
+void bfaHit(std::ifstream &in, BloomFilter &mydBF, CBFilter &mycBF, BloomFilter &myhBF) {
+    bool good = true;
+    #pragma omp parallel
+    for(string seq, hseq; good;) {
+        string rSeqs;
+        #pragma omp critical(in)
+        {
+            good = static_cast<bool>(getline(in, seq));
+            while(good && seq[0]!='>') {
+                rSeqs+=seq;
+                good = static_cast<bool>(getline(in, seq));
+            }
+        }
+        ntHashIterator itr(rSeqs, opt::h+1, opt::k);
+        while (itr != itr.end()) {
+            if(!mydBF.insert_make_change(*itr)) {
+                if(opt::hitCap > 1) {
+                    if(mycBF.insert_and_test(*itr))
+                        myhBF.insert(*itr);
+                } else {
+                    myhBF.insert(*itr);
+                }
             }
             ++itr;
         }
@@ -201,18 +280,18 @@ void faHit(std::ifstream &in, omp_lock_t *locks, CBFilter &myCBF, entry *hitTabl
 }
 
 int main(int argc, char** argv) {
-
     double sTime = omp_get_wtime();
 
     bool die = false;
+    bool nontCard = false;
     for (int c; (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) {
         std::istringstream arg(optarg != NULL ? optarg : "");
         switch (c) {
         case '?':
             die = true;
             break;
-        case 'j':
-            arg >> opt::j;
+        case 't':
+            arg >> opt::t;
             break;
         case 'h':
             arg >> opt::h;
@@ -221,10 +300,22 @@ int main(int argc, char** argv) {
             arg >> opt::k;
             break;
         case 'b':
-            arg >> opt::bits;
+            arg >> opt::bytes;
             break;
         case 'c':
             arg >> opt::hitCap;
+            break;
+        case 'F':
+            arg >> opt::F0;
+            nontCard = true;
+            break;
+        case 'r':
+            arg >> opt::fr;
+            nontCard = true;
+            break;
+        case 'f':
+            arg >> opt::f1;
+            nontCard = true;
             break;
         case 'p':
             arg >> opt::prefix;
@@ -269,71 +360,130 @@ int main(int argc, char** argv) {
         else
             inFiles.push_back(file);
     }
+    if (!nontCard) {
+        size_t histArray[10002];
+        getHist(inFiles, opt::k, opt::t, histArray);
 
-    size_t histArray[10002];
-    getHist(inFiles, opt::k, opt::j, histArray);
+        int histIndex=2, errCov = 1, medianCov = 0;
+        while(histIndex<=10000 && histArray[histIndex]>histArray[histIndex+1]) histIndex++;
+        errCov = histIndex>300? 1: histIndex-1;
+        if(opt::solid) {
+            if(opt::hitCap==0)
+                opt::hitCap = errCov;
+            cerr << "Errors k-mer coverage: " << opt::hitCap << endl;
+        }
+        while(histIndex<=10000 && histArray[histIndex]<histArray[histIndex+1]) histIndex++;
+        medianCov = histIndex>10000? 40: histIndex-1;
+        if(!opt::solid) {
+            if(opt::hitCap==0)
+                opt::hitCap = 2*medianCov;
+            cerr << "Errors k-mer coverage: " << errCov << endl;
+            cerr << "Median k-mer coverage: " << medianCov << endl;
+            cerr << "Repeat k-mer coverage: " << opt::hitCap << endl;
+        }
 
-    opt::cbfSize = opt::bits*histArray[1];
-    opt::hitSize = histArray[1];
-    for(unsigned i=2; i<=opt::hitCap; i++)
-        opt::hitSize -= histArray[i];
-    opt::hitSize *= 5;
+        opt::dbfSize = opt::bits*histArray[1];
+        opt::cbfSize = opt::bytes*(histArray[1]-histArray[2]);
+        size_t hitCount = histArray[1];
+        for(unsigned i=2; i<=opt::hitCap+1; i++)
+            hitCount -= histArray[i];
+        opt::hitSize = opt::outbloom? hitCount*16: hitCount*3;
 
-    cerr << "Approximate# of distinct k-mers: " << histArray[1] << "\n";
-    cerr << "Approximate# of heavy hitter k-mers: " << opt::hitSize/5 << "\n";
+        cerr << "Approximate# of distinct k-mers: " << histArray[1] << "\n";
+        cerr << "Approximate# of solid k-mers: " << hitCount << "\n";
 
-
-    entry *hitTable = new entry [opt::hitSize];
-    for (size_t i=0; i<opt::hitSize; i++) {
-        hitTable[i].count = 0;
+    } else {
+        opt::dbfSize = opt::bits*opt::F0;
+        opt::cbfSize = opt::bytes*(opt::F0-opt::f1);
+        opt::hitSize = 16*opt::fr;
+        cerr << "Approximate# of distinct k-mers: " << opt::F0 << "\n";
+        cerr << "Approximate# of solid k-mers: " << opt::fr << "\n";
     }
-
-    CBFilter myCBF(opt::cbfSize, opt::h, opt::k, opt::hitCap);
 
 #ifdef _OPENMP
-    omp_set_num_threads(opt::j);
+    omp_set_num_threads(opt::t);
 #endif
 
-    unsigned lockSize = 65536;
-    omp_lock_t *locks = new omp_lock_t [lockSize];
-    for(unsigned i = 0; i < lockSize; i++) omp_init_lock(&locks[i]);
+    BloomFilter mydBF(opt::dbfSize, opt::h + 1, opt::k);
+    CBFilter mycBF(opt::cbfSize, opt::h, opt::k, opt::hitCap);
 
-    for (unsigned file_i = 0; file_i < inFiles.size(); ++file_i) {
-        std::ifstream in(inFiles[file_i].c_str());
-        string firstLine;
-        bool good = static_cast<bool>(getline(in, firstLine));
-        if (!good) {
-            std::cerr << "Error in reading file: " << inFiles[file_i] << "\n";
-            exit(EXIT_FAILURE);
+    if(opt::outbloom) {
+        BloomFilter myhBF(opt::hitSize, opt::h + 1, opt::k);
+        for (unsigned file_i = 0; file_i < inFiles.size(); ++file_i) {
+            std::ifstream in(inFiles[file_i].c_str());
+            string firstLine;
+            bool good = static_cast<bool>(getline(in, firstLine));
+            if (!good) {
+                std::cerr << "Error in reading file: " << inFiles[file_i] << "\n";
+                exit(EXIT_FAILURE);
+            }
+            if(firstLine[0]=='>')
+                bfaHit(in, mydBF, mycBF, myhBF);
+            else if (firstLine[0]=='@')
+                bfqHit(in, mydBF, mycBF, myhBF);
+            else {
+                std::cerr << "Error in reading file: " << inFiles[file_i] << "\n";
+                exit(EXIT_FAILURE);
+            }
+            in.close();
         }
-        if(firstLine[0]=='>')
-            faHit(in, locks, myCBF, hitTable);
-        else if (firstLine[0]=='@')
-            fqHit(in, locks, myCBF, hitTable);
-        else {
-            std::cerr << "Error in reading file: " << inFiles[file_i] << "\n";
-            exit(EXIT_FAILURE);
+
+        std::stringstream hstm;
+        if(opt::prefix.empty()) {
+            if(opt::solid)
+                hstm << "solids_k" << opt::k << ".bf";
+            else
+                hstm << "repeat_k" << opt::k << ".bf";
+        } else
+            hstm << opt::prefix << "_k" << opt::k << ".bf";
+        myhBF.storeFilter(hstm.str().c_str());
+    } else {
+        entry *hitTable = new entry [opt::hitSize];
+        for (size_t i=0; i<opt::hitSize; i++) hitTable[i].count = 0;
+        const unsigned lockSize = 65536;
+        omp_lock_t *locks = new omp_lock_t [lockSize];
+
+        for(unsigned i = 0; i < lockSize; i++) omp_init_lock(&locks[i]);
+
+        for (unsigned file_i = 0; file_i < inFiles.size(); ++file_i) {
+            std::ifstream in(inFiles[file_i].c_str());
+            string firstLine;
+            bool good = static_cast<bool>(getline(in, firstLine));
+            if (!good) {
+                std::cerr << "Error in reading file: " << inFiles[file_i] << "\n";
+                exit(EXIT_FAILURE);
+            }
+            if(firstLine[0]=='>')
+                faHit(in, locks, mydBF, mycBF, hitTable);
+            else if (firstLine[0]=='@')
+                fqHit(in, locks, mydBF, mycBF, hitTable);
+            else {
+                std::cerr << "Error in reading file: " << inFiles[file_i] << "\n";
+                exit(EXIT_FAILURE);
+            }
+            in.close();
         }
-        in.close();
+
+        for(unsigned i = 0; i < lockSize; i++) omp_destroy_lock(&locks[i]);
+        delete [] locks;
+
+        std::stringstream hstm;
+        if(opt::prefix.empty()) {
+            if(opt::solid)
+                hstm << "solids_k" << opt::k << ".rep";
+            else
+                hstm << "repeat_k" << opt::k << ".rep";
+        } else
+            hstm << opt::prefix << "_k" << opt::k << ".rep";
+        ofstream outFile(hstm.str().c_str());
+        for (size_t i=0; i<opt::hitSize; i++)
+            if(hitTable[i].count != 0)
+                outFile << hitTable[i].kmer << "\t" << hitTable[i].count + opt::hitCap + 1 << "\n";
+        outFile.close();
+
+        delete [] hitTable;
     }
 
-    for(unsigned i = 0; i < lockSize; i++) omp_destroy_lock(&locks[i]);
-    delete [] locks;
-
-
-    std::stringstream hstm;
-    if(opt::prefix.empty())
-        hstm << "repeat_k" << opt::k << ".rep";
-    else
-        hstm << opt::prefix << "_k" << opt::k << ".rep";
-    ofstream outFile(hstm.str().c_str());
-    for (size_t i=0; i<opt::hitSize; i++)
-        if(hitTable[i].count != 0)
-            outFile << hitTable[i].kmer << "\t" << hitTable[i].count + opt::hitCap  << "\n";
-    outFile.close();
-
-    delete [] hitTable;
-
-    cerr << "Total time for computing reapeat content in (sec): " <<setprecision(4) << fixed << omp_get_wtime() - sTime << "\n";
+    cerr << "Total time for computing repeat content in (sec): " <<setprecision(4) << fixed << omp_get_wtime() - sTime << "\n";
     return 0;
 }
