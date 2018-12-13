@@ -59,9 +59,11 @@ nthits [OPTIONS] ... [FILE]
 ```
 Parameters:
   * `-k`,  `--kmer=SIZE`: the length of *k*-mer `[64]`
-  * `-j`,  `--threads=N`: use N parallel threads `[16]`
-  * `-c`,  `--cutoff=N`: the maximum coverage of *k*-mer in output `[40]`
+  * `-t`,  `--threads=N`: use N parallel threads `[16]`
+  * `-c`,  `--cutoff=N`: the maximum coverage of *k*-mer in output 
   * `-p`,  `--pref=STRING`: the prefix for output file name `[repeat]`
+  * `--outbloom`, output the most frequet k-mers in a Bloom filter
+  * `--solid`,  output the solid k-mers (non-errornous k-mers)
   * `FILE`: input file or set of files seperated by space, in fasta, fastq, sam, and bam formats. The files can also be in compressed (`.gz`, `.bz2`, `.xz`) formats . A list of files containing file names in each row can be passed with `@` prefix.
   
 For example to run nthits on a test file `reads.fastq` with `k=50`:

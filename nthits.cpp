@@ -36,8 +36,7 @@ static const char USAGE_MESSAGE[] =
     "\n"
     "  -t, --threads=N	use N parallel threads [16]\n"
     "  -k, --kmer=N	the length of kmer [64]\n"
-    "  -c, --cutoff=N	the maximum coverage of kmer in output [40]\n"
-    "  -b, --bit=N	the number of counter per distict k-mer [64]\n"
+    "  -c, --cutoff=N	the maximum coverage of kmer in output\n"
     "  -p, --pref=STRING	the prefix for output file name [repeat]\n"
     "  --outbloom	output the most frequet k-mers in a Bloom filter\n"
     "  --solid	output the solid k-mers (non-errornous k-mers)\n"
@@ -298,9 +297,6 @@ int main(int argc, char** argv) {
             break;
         case 'k':
             arg >> opt::k;
-            break;
-        case 'b':
-            arg >> opt::bytes;
             break;
         case 'c':
             arg >> opt::hitCap;
