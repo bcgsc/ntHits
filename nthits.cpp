@@ -359,22 +359,35 @@ int main(int argc, char** argv) {
     if (!nontCard) {
         size_t histArray[10002];
         getHist(inFiles, opt::k, opt::t, histArray);
-
-        int histIndex=2, errCov = 1, medianCov = 0;
+        
+        int histIndex=2, errCov = 1;
         while(histIndex<=10000 && histArray[histIndex]>histArray[histIndex+1]) histIndex++;
+        
         errCov = histIndex>300? 1: histIndex-1;
+
+        unsigned maxCov=errCov;
+        for(unsigned i=errCov; i<10002; i++) {
+            if(histArray[i] >= histArray[maxCov]) maxCov = i;
+        }
+        maxCov--;
+        
+        unsigned minCov=errCov;
+        for(unsigned i=errCov; i<maxCov; i++) {
+            if(histArray[i] <= histArray[minCov]) minCov = i;
+        }
+        minCov--;
+        
         if(opt::solid) {
             if(opt::hitCap==0)
-                opt::hitCap = errCov;
+                opt::hitCap = minCov;
             cerr << "Errors k-mer coverage: " << opt::hitCap << endl;
         }
-        while(histIndex<=10000 && histArray[histIndex]<histArray[histIndex+1]) histIndex++;
-        medianCov = histIndex>10000? 40: histIndex-1;
+        
         if(!opt::solid) {
             if(opt::hitCap==0)
-                opt::hitCap = 2*medianCov;
-            cerr << "Errors k-mer coverage: " << errCov << endl;
-            cerr << "Median k-mer coverage: " << medianCov << endl;
+                opt::hitCap = 1.75*maxCov;
+            cerr << "Errors k-mer coverage: " << minCov << endl;
+            cerr << "Median k-mer coverage: " << maxCov << endl;
             cerr << "Repeat k-mer coverage: " << opt::hitCap << endl;
         }
 
