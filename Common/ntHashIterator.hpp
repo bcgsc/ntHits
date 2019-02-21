@@ -40,6 +40,20 @@ public:
     {
         init();
     }
+    
+    /** Copy constructor */
+    ntHashIterator(const ntHashIterator &nth)
+    {
+        m_seq = nth.m_seq;
+        m_h = nth.m_h;
+        m_k = nth.m_k;
+        m_hVec = new uint64_t[m_h];
+        for (unsigned i=0; i<m_h; i++) m_hVec[i] = nth.m_hVec[i];
+        m_pos = nth.m_pos;
+        m_fhVal = nth.m_fhVal;
+        m_rhVal = nth.m_rhVal;
+    }
+    
 
     /** Initialize internal state of iterator */
     void init()
@@ -49,7 +63,7 @@ public:
             return;
         }
         unsigned locN=0;
-        while (m_pos<m_seq.length()-m_k+1 && !NTMC64(m_seq.data()+m_pos, m_k, m_h, m_fhVal, m_rhVal, locN, m_hVec, m_hStn))
+        while (m_pos<m_seq.length()-m_k+1 && !NTMC64(m_seq.data()+m_pos, m_k, m_h, m_fhVal, m_rhVal, locN, m_hVec))
             m_pos+=locN+1;
         if (m_pos >= m_seq.length()-m_k+1)
             m_pos = std::numeric_limits<std::size_t>::max();
@@ -68,20 +82,13 @@ public:
             init();
         }
         else
-            NTMC64(m_seq.at(m_pos-1), m_seq.at(m_pos-1+m_k), m_k, m_h, m_fhVal, m_rhVal, m_hVec, m_hStn);
+            NTMC64(m_seq.at(m_pos-1), m_seq.at(m_pos-1+m_k), m_k, m_h, m_fhVal, m_rhVal, m_hVec);
     }
     
     size_t pos() const{
     	return m_pos;
     }
 
-    /** get the starnd of hash value for current k-mer */
-    bool strand() const
-    {
-        return m_hStn;
-    }
-
-    
     /** get pointer to hash values for current k-mer */
     const uint64_t* operator*() const
     {
@@ -132,8 +139,6 @@ private:
 
     /** hash values */
     uint64_t *m_hVec;
-    
-    bool m_hStn;
 
     /** position of current k-mer */
     size_t m_pos;

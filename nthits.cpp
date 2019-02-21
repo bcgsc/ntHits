@@ -25,7 +25,7 @@
 static const char VERSION_MESSAGE[] =
     PROGRAM " 0.1.0 \n"
     "Written by Hamid Mohamadi.\n"
-    "Copyright 2018 Canada's Michael Smith Genome Science Centre\n";
+    "Copyright 2019 Canada's Michael Smith Genome Science Centre\n";
 
 static const char USAGE_MESSAGE[] =
     "Usage: " PROGRAM " [OPTION]... FILES...\n"
@@ -38,7 +38,7 @@ static const char USAGE_MESSAGE[] =
     "  -k, --kmer=N	the length of kmer [64]\n"
     "  -c, --cutoff=N	the maximum coverage of kmer in output\n"
     "  -p, --pref=STRING	the prefix for output file name [repeat]\n"
-    "  --outbloom	output the most frequet k-mers in a Bloom filter\n"
+    "  --outbloom	output the most frequent k-mers in a Bloom filter\n"
     "  --solid	output the solid k-mers (non-errornous k-mers)\n"
     "  --help	display this help and exit\n"
     "  --version	output version information and exit\n"
@@ -55,6 +55,7 @@ size_t h = 2;
 size_t hitCap=0;
 size_t bytes = 3;
 size_t bits = 7;
+size_t m = 36;
 size_t dbfSize;
 size_t cbfSize;
 size_t hitSize;
@@ -298,6 +299,9 @@ int main(int argc, char** argv) {
         case 'k':
             arg >> opt::k;
             break;
+        case 'b':
+            arg >> opt::m;
+            break;
         case 'c':
             arg >> opt::hitCap;
             break;
@@ -359,10 +363,10 @@ int main(int argc, char** argv) {
     if (!nontCard) {
         size_t histArray[10002];
         getHist(inFiles, opt::k, opt::t, histArray);
-        
+
         int histIndex=2, errCov = 1;
         while(histIndex<=10000 && histArray[histIndex]>histArray[histIndex+1]) histIndex++;
-        
+
         errCov = histIndex>300? 1: histIndex-1;
 
         unsigned maxCov=errCov;
@@ -370,19 +374,19 @@ int main(int argc, char** argv) {
             if(histArray[i] >= histArray[maxCov]) maxCov = i;
         }
         maxCov--;
-        
+
         unsigned minCov=errCov;
         for(unsigned i=errCov; i<maxCov; i++) {
             if(histArray[i] <= histArray[minCov]) minCov = i;
         }
         minCov--;
-        
+
         if(opt::solid) {
             if(opt::hitCap==0)
                 opt::hitCap = minCov;
             cerr << "Errors k-mer coverage: " << opt::hitCap << endl;
         }
-        
+
         if(!opt::solid) {
             if(opt::hitCap==0)
                 opt::hitCap = 1.75*maxCov;
@@ -396,7 +400,7 @@ int main(int argc, char** argv) {
         size_t hitCount = histArray[1];
         for(unsigned i=2; i<=opt::hitCap+1; i++)
             hitCount -= histArray[i];
-        opt::hitSize = opt::outbloom? hitCount*16: hitCount*3;
+        opt::hitSize = opt::outbloom? hitCount*opt::m: hitCount*3;
 
         cerr << "Approximate# of distinct k-mers: " << histArray[1] << "\n";
         cerr << "Approximate# of solid k-mers: " << hitCount << "\n";
@@ -404,7 +408,7 @@ int main(int argc, char** argv) {
     } else {
         opt::dbfSize = opt::bits*opt::F0;
         opt::cbfSize = opt::bytes*(opt::F0-opt::f1);
-        opt::hitSize = 16*opt::fr;
+        opt::hitSize = opt::m*opt::fr;
         cerr << "Approximate# of distinct k-mers: " << opt::F0 << "\n";
         cerr << "Approximate# of solid k-mers: " << opt::fr << "\n";
     }
@@ -417,6 +421,7 @@ int main(int argc, char** argv) {
     CBFilter mycBF(opt::cbfSize, opt::h, opt::k, opt::hitCap);
 
     if(opt::outbloom) {
+        opt::hitSize = 3423943392; // DEBUG
         BloomFilter myhBF(opt::hitSize, opt::h + 1, opt::k);
         for (unsigned file_i = 0; file_i < inFiles.size(); ++file_i) {
             std::ifstream in(inFiles[file_i].c_str());

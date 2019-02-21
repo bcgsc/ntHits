@@ -51,7 +51,7 @@ public:
         m_kmerSize = header.kmer;
         
         char magic[9];
-        strncpy(magic, header.magic, 8);
+        memcpy(magic, header.magic, 8);
         magic[8] = '\0';
         cerr << magic << "\tsize(bits): " << m_size << "\thash: " << m_hashNum << "\t k: " << m_kmerSize << endl;
         cerr << "\t fpr: " << header.dFPR << endl;
@@ -105,10 +105,7 @@ public:
 
     void storeFilter(const char * fPath) const {
         FileHeader header;
-        strncpy(header.magic, "BlOOMFXX", 8);
-        char magic[9];
-        strncpy(magic, header.magic, 8);
-        magic[8] = '\0';
+        memcpy(header.magic, "BlOOMFXX", 8);
 
         header.hlen = sizeof(struct FileHeader);
         header.size = m_size;
