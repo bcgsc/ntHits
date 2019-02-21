@@ -55,7 +55,7 @@ size_t h = 2;
 size_t hitCap=0;
 size_t bytes = 3;
 size_t bits = 7;
-size_t m = 36;
+size_t m = 16;
 size_t dbfSize;
 size_t cbfSize;
 size_t hitSize;
@@ -421,7 +421,6 @@ int main(int argc, char** argv) {
     CBFilter mycBF(opt::cbfSize, opt::h, opt::k, opt::hitCap);
 
     if(opt::outbloom) {
-        opt::hitSize = 3423943392; // DEBUG
         BloomFilter myhBF(opt::hitSize, opt::h + 1, opt::k);
         for (unsigned file_i = 0; file_i < inFiles.size(); ++file_i) {
             std::ifstream in(inFiles[file_i].c_str());
