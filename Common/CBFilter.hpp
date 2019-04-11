@@ -35,8 +35,10 @@ public:
 
     bool insert_and_test(const uint64_t *hVal) {
         bool greaterFlag = true;
-        unsigned minCount = 256;
-        for (unsigned i = 0; i < m_hashNum; i++) {
+        unsigned minCount = m_filter[hVal[0] % m_size];
+        if(minCount < m_reCap)
+            greaterFlag = false;
+        for (unsigned i = 1; i < m_hashNum; i++) {
             size_t hLoc = hVal[i] % m_size;
             if(m_filter[hLoc] < m_reCap) {
                 if(m_filter[hLoc] < minCount)
@@ -45,9 +47,16 @@ public:
             }
         }
         if(!greaterFlag) {
+            //unsigned curVal, newVal;
             for (unsigned i = 0; i < m_hashNum; i++) {
                 size_t hLoc = hVal[i] % m_size;
                 if(m_filter[hLoc] == minCount) {
+                    //do {
+                    //    curVal = m_filter[hLoc];
+                    //    newVal = curVal + 1;
+                    //    if (newVal < curVal)
+                    //        break;
+                    //} while(!__sync_bool_compare_and_swap(&m_filter[hLoc], curVal, newVal));
                     #pragma omp atomic
                     ++m_filter[hLoc];
                 }

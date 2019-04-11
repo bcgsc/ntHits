@@ -7,7 +7,6 @@
 #include <vector>
 #include <getopt.h>
 
-
 #include "ntHashIterator.hpp"
 #include "ntcard.hpp"
 #include "BloomFilter.hpp"
@@ -51,9 +50,9 @@ using namespace std;
 namespace opt {
 size_t t = 16;
 size_t k = 64;
-size_t h = 2;
-size_t hitCap=0;
-size_t bytes = 3;
+size_t h = 4;
+size_t hitCap = 0;
+size_t bytes = 6;
 size_t bits = 7;
 size_t m = 16;
 size_t dbfSize;
@@ -63,8 +62,9 @@ string prefix;
 size_t F0;
 size_t f1;
 size_t fr;
-int outbloom=0;
-int solid=0;
+int outbloom = 0;
+int solid = 0;
+int eval = 0;
 }
 
 static const char shortopts[] = "t:h:k:b:p:r:c:F:f:";
@@ -83,6 +83,7 @@ static const struct option longopts[] = {
     { "prefix",	required_argument, NULL, 'p' },
     { "outbloom",	no_argument, &opt::outbloom, 1},
     { "solid",	no_argument, &opt::solid, 1},
+    { "eval",	no_argument, &opt::eval, 1},
     { "help",	no_argument, NULL, OPT_HELP },
     { "version",	no_argument, NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -165,6 +166,19 @@ bool hitSearchInsert(const uint64_t kint, const string &kmer, omp_lock_t *locks,
     return false;
 }
 
+unsigned hitSearch(const uint64_t kint, const string &kmer, entry *T) {
+    uint64_t i=0, j;
+    do {
+        j = (kint + i) % opt::hitSize;
+        if (T[j].kmer == kmer) {
+            return T[j].count;
+        }
+        ++i;
+    } while (i!= opt::hitSize && T[j].count!=0);
+    return 0;
+}
+
+
 void fqHit(std::ifstream &in, omp_lock_t *locks, BloomFilter &mydBF, CBFilter &mycBF, entry *hitTable) {
     bool good, good2 =true;
     #pragma omp parallel
@@ -187,7 +201,6 @@ void fqHit(std::ifstream &in, omp_lock_t *locks, BloomFilter &mydBF, CBFilter &m
                             hitSearchInsert((*itr)[0], canonKmer, locks, hitTable);
                         }
                     } else {
-
                         hitSearchInsert((*itr)[0], canonKmer, locks, hitTable);
                     }
                 }
@@ -417,8 +430,8 @@ int main(int argc, char** argv) {
     omp_set_num_threads(opt::t);
 #endif
 
-    BloomFilter mydBF(opt::dbfSize, opt::h + 1, opt::k);
-    CBFilter mycBF(opt::cbfSize, opt::h, opt::k, opt::hitCap);
+    BloomFilter mydBF(opt::dbfSize, 3, opt::k);
+    CBFilter mycBF(opt::cbfSize, opt::h, opt::k, opt::hitCap - 1);
 
     if(opt::outbloom) {
         BloomFilter myhBF(opt::hitSize, opt::h + 1, opt::k);
@@ -491,8 +504,45 @@ int main(int argc, char** argv) {
         ofstream outFile(hstm.str().c_str());
         for (size_t i=0; i<opt::hitSize; i++)
             if(hitTable[i].count != 0)
-                outFile << hitTable[i].kmer << "\t" << hitTable[i].count + opt::hitCap + 1 << "\n";
+                outFile << hitTable[i].kmer << "\t" << hitTable[i].count + opt::hitCap<< "\n";
         outFile.close();
+        
+        //if(opt::eval) {
+        std::ofstream dOut("diff_2");
+        std::ifstream dskRes("out_ge22.txt");
+        std::string dskLine;
+        while (getline(dskRes,dskLine)) {
+            std::string dsk_kmer;
+            unsigned dsk_count = 0;
+            std::istringstream dskstm(dskLine);
+            dskstm >> dsk_kmer >> dsk_count;
+            //cerr << dsk_kmer << "\t" << dsk_count << "\n";
+            //if (dsk_count >= opt::hitCap) {
+            uint64_t dsk_hash = NTC64(dsk_kmer.c_str(), opt::k);
+            unsigned nthits_count = hitSearch(dsk_hash, dsk_kmer, hitTable);
+            if (nthits_count!=0) {
+                std::cout << dsk_kmer << "\t" << dsk_count << "\t" <<nthits_count+ opt::hitCap<<"\n";
+            }
+            else {
+                std::string dsk_can(dsk_kmer);
+                getCanon(dsk_can);
+                if(dsk_can!=dsk_kmer) {
+                    uint64_t dsk_hash = NTC64(dsk_can.c_str(), opt::k);
+                    unsigned nthits_count = hitSearch(dsk_hash, dsk_can, hitTable);
+                    if (nthits_count!=0) {
+                        std::cout << dsk_can << "\t" << dsk_count << "\t" <<nthits_count+ opt::hitCap<<"\n";
+                    }
+                }
+                else
+                    dOut << dsk_kmer << "\t" << dsk_count << "\t" <<"0"<<"\n";
+            }
+            //}
+        }
+        
+        dskRes.close();
+        dOut.close();
+        //}
+        
 
         delete [] hitTable;
     }
