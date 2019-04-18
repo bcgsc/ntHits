@@ -32,13 +32,11 @@ public:
     m_size(filterSize), m_hashNum(hashNum), m_kmerSize(kmerSize), m_reCap(repCap) {
         m_filter = new unsigned char [m_size]();
     }
-
-    bool insert_and_test(const uint64_t *hVal) {
-        bool greaterFlag = true;
+    
+    unsigned getMin(const uint64_t *hVal, bool &greaterFlag) {
+        greaterFlag = true;
         unsigned minCount = m_filter[hVal[0] % m_size];
-        if(minCount < m_reCap)
-            greaterFlag = false;
-        for (unsigned i = 1; i < m_hashNum; i++) {
+        for (unsigned i = 0; i < m_hashNum; i++) {
             size_t hLoc = hVal[i] % m_size;
             if(m_filter[hLoc] < m_reCap) {
                 if(m_filter[hLoc] < minCount)
@@ -46,25 +44,23 @@ public:
                 greaterFlag = false;
             }
         }
-        if(!greaterFlag) {
-            //unsigned curVal, newVal;
+        return minCount;
+    }
+
+    bool insert_and_test(const uint64_t *hVal) {
+        bool updateDone=false, greaterFlag=true;
+        unsigned minCount = getMin(hVal, greaterFlag);
+        while(!greaterFlag && !updateDone) {
             for (unsigned i = 0; i < m_hashNum; i++) {
-                size_t hLoc = hVal[i] % m_size;
-                if(m_filter[hLoc] == minCount) {
-                    //do {
-                    //    curVal = m_filter[hLoc];
-                    //    newVal = curVal + 1;
-                    //    if (newVal < curVal)
-                    //        break;
-                    //} while(!__sync_bool_compare_and_swap(&m_filter[hLoc], curVal, newVal));
-                    #pragma omp atomic
-                    ++m_filter[hLoc];
-                }
+                if(__sync_bool_compare_and_swap(&m_filter[hVal[i] % m_size], minCount, minCount+1))
+                    updateDone = true;
             }
+            if(!updateDone)
+                minCount = getMin(hVal, greaterFlag);
         }
         return greaterFlag;
     }
-
+    
     ~CBFilter() {
         delete[] m_filter;
     }

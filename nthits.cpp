@@ -50,9 +50,9 @@ using namespace std;
 namespace opt {
 size_t t = 16;
 size_t k = 64;
-size_t h = 4;
+size_t h = 5;
 size_t hitCap = 0;
-size_t bytes = 6;
+size_t bytes = 7;
 size_t bits = 7;
 size_t m = 16;
 size_t dbfSize;
@@ -507,41 +507,47 @@ int main(int argc, char** argv) {
                 outFile << hitTable[i].kmer << "\t" << hitTable[i].count + opt::hitCap<< "\n";
         outFile.close();
         
-        //if(opt::eval) {
-        std::ofstream dOut("diff_2");
-        std::ifstream dskRes("out_ge22.txt");
-        std::string dskLine;
-        while (getline(dskRes,dskLine)) {
-            std::string dsk_kmer;
-            unsigned dsk_count = 0;
-            std::istringstream dskstm(dskLine);
-            dskstm >> dsk_kmer >> dsk_count;
-            //cerr << dsk_kmer << "\t" << dsk_count << "\n";
-            //if (dsk_count >= opt::hitCap) {
-            uint64_t dsk_hash = NTC64(dsk_kmer.c_str(), opt::k);
-            unsigned nthits_count = hitSearch(dsk_hash, dsk_kmer, hitTable);
-            if (nthits_count!=0) {
-                std::cout << dsk_kmer << "\t" << dsk_count << "\t" <<nthits_count+ opt::hitCap<<"\n";
-            }
-            else {
-                std::string dsk_can(dsk_kmer);
-                getCanon(dsk_can);
-                if(dsk_can!=dsk_kmer) {
-                    uint64_t dsk_hash = NTC64(dsk_can.c_str(), opt::k);
-                    unsigned nthits_count = hitSearch(dsk_hash, dsk_can, hitTable);
-                    if (nthits_count!=0) {
-                        std::cout << dsk_can << "\t" << dsk_count << "\t" <<nthits_count+ opt::hitCap<<"\n";
-                    }
+        if(opt::eval) {
+            std::stringstream diffstm;
+            if(!opt::prefix.empty())
+                diffstm << "diff_" << opt::prefix;
+            else
+                diffstm << "diff_" << opt::k;
+            
+            std::ofstream dOut(diffstm.str().c_str());
+            std::ifstream dskRes("out_ge22.txt");
+            std::string dskLine;
+            while (getline(dskRes,dskLine)) {
+                std::string dsk_kmer;
+                unsigned dsk_count = 0;
+                std::istringstream dskstm(dskLine);
+                dskstm >> dsk_kmer >> dsk_count;
+                //cerr << dsk_kmer << "\t" << dsk_count << "\n";
+                //if (dsk_count >= opt::hitCap) {
+                uint64_t dsk_hash = NTC64(dsk_kmer.c_str(), opt::k);
+                unsigned nthits_count = hitSearch(dsk_hash, dsk_kmer, hitTable);
+                if (nthits_count!=0) {
+                    std::cout << dsk_kmer << "\t" << dsk_count << "\t" <<nthits_count+ opt::hitCap<<"\n";
                 }
-                else
-                    dOut << dsk_kmer << "\t" << dsk_count << "\t" <<"0"<<"\n";
+                else {
+                    std::string dsk_can(dsk_kmer);
+                    getCanon(dsk_can);
+                    if(dsk_can!=dsk_kmer) {
+                        uint64_t dsk_hash = NTC64(dsk_can.c_str(), opt::k);
+                        unsigned nthits_count = hitSearch(dsk_hash, dsk_can, hitTable);
+                        if (nthits_count!=0) {
+                            std::cout << dsk_can << "\t" << dsk_count << "\t" <<nthits_count+ opt::hitCap<<"\n";
+                        }
+                    }
+                    else
+                        dOut << dsk_kmer << "\t" << dsk_count << "\t" <<"0"<<"\n";
+                }
+                //}
             }
-            //}
+            
+            dskRes.close();
+            dOut.close();
         }
-        
-        dskRes.close();
-        dOut.close();
-        //}
         
 
         delete [] hitTable;
