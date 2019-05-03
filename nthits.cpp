@@ -44,7 +44,7 @@ static const char USAGE_MESSAGE[] =
     "\n"
     "Report bugs to hmohamadi@bcgsc.ca.\n";
 
-
+ 
 using namespace std;
 
 namespace opt {
@@ -52,8 +52,8 @@ size_t t = 16;
 size_t k = 64;
 size_t h = 5;
 size_t hitCap = 0;
-size_t bytes = 7;
-size_t bits = 7;
+size_t bytes = 8;
+size_t bits = 8;
 size_t m = 16;
 size_t dbfSize;
 size_t cbfSize;
@@ -376,7 +376,7 @@ int main(int argc, char** argv) {
     if (!nontCard) {
         size_t histArray[10002];
         getHist(inFiles, opt::k, opt::t, histArray);
-
+        
         int histIndex=2, errCov = 1;
         while(histIndex<=10000 && histArray[histIndex]>histArray[histIndex+1]) histIndex++;
 
@@ -430,7 +430,7 @@ int main(int argc, char** argv) {
     omp_set_num_threads(opt::t);
 #endif
 
-    BloomFilter mydBF(opt::dbfSize, 3, opt::k);
+    BloomFilter mydBF(opt::dbfSize, 5, opt::k);
     CBFilter mycBF(opt::cbfSize, opt::h, opt::k, opt::hitCap - 1);
 
     if(opt::outbloom) {
@@ -515,7 +515,7 @@ int main(int argc, char** argv) {
                 diffstm << "diff_" << opt::k;
             
             std::ofstream dOut(diffstm.str().c_str());
-            std::ifstream dskRes("out_ge22.txt");
+            std::ifstream dskRes("ehsap_ge64.txt");
             std::string dskLine;
             while (getline(dskRes,dskLine)) {
                 std::string dsk_kmer;

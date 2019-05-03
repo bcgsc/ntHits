@@ -33,29 +33,28 @@ public:
         m_filter = new unsigned char [m_size]();
     }
     
-    unsigned getMin(const uint64_t *hVal, bool &greaterFlag) {
+    unsigned getMin(const uint64_t *hVal, bool &greaterFlag) const {
         greaterFlag = true;
         unsigned minCount = m_filter[hVal[0] % m_size];
-        for (unsigned i = 0; i < m_hashNum; i++) {
+        for (unsigned i = 1; i < m_hashNum; i++) {
             size_t hLoc = hVal[i] % m_size;
-            if(m_filter[hLoc] < m_reCap) {
-                if(m_filter[hLoc] < minCount)
-                    minCount = m_filter[hLoc];
-                greaterFlag = false;
-            }
+            if(m_filter[hLoc] < minCount)
+                minCount = m_filter[hLoc];
         }
+        greaterFlag = minCount >= m_reCap;
         return minCount;
     }
 
     bool insert_and_test(const uint64_t *hVal) {
         bool updateDone=false, greaterFlag=true;
         unsigned minCount = getMin(hVal, greaterFlag);
-        while(!greaterFlag && !updateDone) {
+        while (!greaterFlag && !updateDone) {
             for (unsigned i = 0; i < m_hashNum; i++) {
-                if(__sync_bool_compare_and_swap(&m_filter[hVal[i] % m_size], minCount, minCount+1))
+                if (__sync_bool_compare_and_swap(&m_filter[hVal[i] % m_size], minCount, minCount+1)) {
                     updateDone = true;
+                }
             }
-            if(!updateDone)
+            if (!updateDone)
                 minCount = getMin(hVal, greaterFlag);
         }
         return greaterFlag;
