@@ -10,10 +10,13 @@
 #ifndef BLOOMFILTER_H_
 #define BLOOMFILTER_H_
 
+#include <math.h>
+
 #include "iostream"
 #include "fstream"
 #include <cstring>
 #include "nthash.hpp"
+#include "vendor/cpptoml/include/cpptoml.h"
 
 using namespace std;
 
@@ -26,41 +29,36 @@ inline unsigned popCnt(unsigned char x) {
 
 class BloomFilter {
 public:
-    
-#pragma pack(push)
-#pragma pack(1) //to maintain consistent values across platforms
-    struct FileHeader {
-        char magic[8];
-        uint32_t hlen;
-        uint64_t size;
-        uint32_t nhash;
-        uint32_t kmer;
-        double dFPR;
-        uint64_t nEntry;
-        uint64_t tEntry;
-    };
-#pragma pack(pop)
 
-    BloomFilter(const char * fPath) {
-        FileHeader header;
-        ifstream myFile(fPath, ios::in | ios::binary);
-        myFile.seekg(0, ios::beg);
-        myFile.read((char *)(&header), sizeof(struct FileHeader));
-        m_size = header.size;
-        m_hashNum = header.nhash;
-        m_kmerSize = header.kmer;
-        
-        char magic[9];
-        memcpy(magic, header.magic, 8);
-        magic[8] = '\0';
-        cerr << magic << "\tsize(bits): " << m_size << "\thash: " << m_hashNum << "\t k: " << m_kmerSize << endl;
-        cerr << "\t fpr: " << header.dFPR << endl;
+	BloomFilter(const string& filterFilePath)
+	  : m_filter(NULL)
+	{
+		loadFilter(filterFilePath);
+	}
 
-        m_filter = new unsigned char [(m_size + 7)/8]();
-        myFile.read((char *)m_filter, (m_size + 7)/8);
-        myFile.close();
+	void loadFilter(const string& filterFilePath)
+	{
+		std::ifstream file(filterFilePath);
+		loadHeader(file);
+		// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+		file.read(reinterpret_cast<char*>(m_filter), (m_size + 7)/8);
+		file.close();
+	}
+
+	void loadHeader(std::istream& file)
+	{
+		std::string magic_header(MAGIC_HEADER_STRING);
+		(magic_header.insert(0, "[")).append("]");
+		std::string line;
+		std::getline(file, line);
+		if (line != magic_header) {
+			std::cerr << "ERROR: magic string does not match (likely version mismatch)\n"
+			          << "Your magic string:                " << line << "\n"
+			          << "CountingBloomFilter magic string: " << magic_header << std::endl;
+			exit(EXIT_FAILURE);
+		}
     }
-    
+
     BloomFilter(size_t filterSize, unsigned hashNum, unsigned kmerSize):
         m_size(filterSize), m_hashNum(hashNum), m_kmerSize(kmerSize) {
         m_filter = new unsigned char [(m_size + 7)/8]();
@@ -103,23 +101,50 @@ public:
         return true;
     }
 
-    void storeFilter(const char * fPath) const {
-        FileHeader header;
-        memcpy(header.magic, "BlOOMFXX", 8);
+	void writeHeader(std::ostream& out) const
+	{
+		/* Initialize cpptoml root table
+		   Note: Tables and fields are unordered
+		   Ordering of table is maintained by directing the table
+		   to the output stream immediately after completion  */
+		std::shared_ptr<cpptoml::table> root = cpptoml::make_table();
 
-        header.hlen = sizeof(struct FileHeader);
-        header.size = m_size;
-        header.nhash = m_hashNum;
-        header.kmer = m_kmerSize;
-        header.dFPR = pow(getPop()*1.0/m_size, m_hashNum);
-        header.nEntry = 0;
-        header.tEntry = 0;
-        
-        
-        ofstream myFile(fPath, ios::out | ios::binary);
-        myFile.write(reinterpret_cast<char*>(&header), sizeof(struct FileHeader));
-        myFile.write(reinterpret_cast<char*>(m_filter), (m_size + 7)/8);
-        myFile.close();
+		/* Initialize bloom filter section and insert fields
+		   and output to ostream */
+		auto header = cpptoml::make_table();
+		header->insert("KmerSize", m_kmerSize);
+		header->insert("HashNum", m_hashNum);
+		header->insert("BloomFilterSize", m_size);
+		header->insert("BloomFilterSizeInBytes", (m_size + 7)/8);
+		header->insert("dFPR",pow(getPop()*1.0/m_size, m_hashNum));
+		header->insert("nEntry", 0);
+		header->insert("Entry", 0);
+		std::string magic(MAGIC_HEADER_STRING);
+		root->insert(magic, header);
+		out << *root;
+
+		// Output [HeaderEnd]\n to ostream to mark the end of the header
+		out << "[HeaderEnd]\n";
+}
+
+
+	/** Serialize the Bloom filter to a stream */
+	friend std::ostream& operator<<(std::ostream& out, const BloomFilter& bloom)
+	{
+		bloom.writeHeader(out);
+		// NOLINTNEXTLINE(google-readability-casting)
+		out.write(reinterpret_cast<char*>(bloom.m_filter), (bloom.m_size + 7)/8);
+		return out;
+	}
+
+
+    void storeFilter(const char * fPath) const {
+		std::ofstream ofs(fPath, std::ios::out | std::ios::binary);
+		std::cerr << "Writing a " << (m_size + 7)/8 << " byte filter to " << fPath
+		          << " on disk.\n";
+		ofs << *this;
+		ofs.flush();
+        ofs.close();
     }
 
     size_t getPop() const {
@@ -144,6 +169,7 @@ private:
     size_t m_size;
     unsigned m_hashNum;
     unsigned m_kmerSize;
+    static constexpr const char* MAGIC_HEADER_STRING = "BTLBloomFilter_v1";
 };
 
 #endif /* BLOOMFILTER_H_ */

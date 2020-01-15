@@ -20,7 +20,7 @@
 #include <cassert>
 #include <cmath>
 #include "ntHashIterator.hpp"
-
+#include "stHashIterator.hpp"
 
 #ifdef _OPENMP
 # include <omp.h>
@@ -32,6 +32,7 @@ using namespace std;
 namespace nts {
 unsigned nThrd=1;
 unsigned kmLen=64;
+unsigned gap = 0;
 size_t rBuck;
 unsigned rBits=27;
 unsigned sBits=11;
@@ -39,6 +40,7 @@ unsigned sMask;
 unsigned covMax=10000;
 size_t nSamp=2;
 bool samH=true;
+std::vector<std::vector<unsigned>> seedSet;
 }
 
 size_t getInf(const char* inFile) {
@@ -95,14 +97,27 @@ inline void ntRead(const string &seq, uint16_t *t_Counter, size_t &totKmer) {
     }
 }
 
+inline void stRead(const string &seq, uint16_t *t_Counter, size_t &totKmer) {
+    stHashIterator itr(seq, nts::seedSet, 1, 1, nts::kmLen);
+    while (itr != itr.end()) {
+        ntComp((*itr)[0],t_Counter);
+        ++itr;
+        ++totKmer;
+    }
+}
+
 void getEfq(std::ifstream &in, uint16_t *t_Counter, size_t &totKmer) {
     bool good = true;
     for(string seq, hseq; good;) {
         good = static_cast<bool>(getline(in, seq));
         good = static_cast<bool>(getline(in, hseq));
         good = static_cast<bool>(getline(in, hseq));
-        if(good)
+        if(good && nts::gap == 0) {
             ntRead(seq, t_Counter, totKmer);
+        }
+        if(good && nts::gap != 0) {
+            stRead(seq, t_Counter, totKmer);
+        }
         good = static_cast<bool>(getline(in, hseq));
     }
 }
@@ -116,7 +131,11 @@ void getEfa(std::ifstream &in, uint16_t *t_Counter, size_t &totKmer) {
             line+=seq;
             good = static_cast<bool>(getline(in, seq));
         }
-        ntRead(line, t_Counter, totKmer);
+        if (nts::gap ==0) {
+            ntRead(line, t_Counter, totKmer);
+        } else {
+            stRead(line, t_Counter, totKmer);
+        }
     }
 }
 
@@ -132,7 +151,11 @@ void getEsm(std::ifstream &in, const std::string &samSeq, uint16_t *t_Counter, s
     do {
         std::istringstream iss(samLine);
         iss>>s1>>s2>>s3>>s4>>s5>>s6>>s7>>s8>>s9>>seq>>s11;
-        ntRead(seq, t_Counter, totKmer);
+        if (nts::gap ==0) {
+            ntRead(seq, t_Counter, totKmer);
+        } else {
+            stRead(seq, t_Counter, totKmer);
+        }
     } while(getline(in,samLine));
 }
 
@@ -167,13 +190,22 @@ void compEst(const uint16_t *t_Counter, double &F0Mean, double fMean[]) {
         fMean[i]=abs((ssize_t)(fMean[i]*F0Mean));
 }
 
-void getHist(const vector<string> &inFiles, const unsigned kLen, const unsigned nThr, size_t histArray[]) {
+void getHist(const vector<string> &inFiles, const unsigned kLen, const unsigned nThr, size_t histArray[], const unsigned gap) {
 
     double sTime = omp_get_wtime();
 
     nts::nThrd = nThr;
     nts::kmLen = kLen;
-    
+    nts::gap = gap;
+
+	if (nts::gap != 0) {
+        std::string gap(nts::gap, '0');
+        std::string nonGap((nts::kmLen - nts::gap) / 2, '1');
+        std::vector<std::string> seedString;
+        seedString.push_back(nonGap + gap + nonGap);
+        nts::seedSet = stHashIterator::parseSeed(seedString);
+	}
+
     size_t totalSize=0;
     for (unsigned file_i = 0; file_i < inFiles.size(); ++file_i)
         totalSize += getInf(inFiles[file_i].c_str());
@@ -221,4 +253,3 @@ void getHist(const vector<string> &inFiles, const unsigned kLen, const unsigned 
     std::cerr << "Reapeat profile estimated using ntCard in (sec): " <<setprecision(4) << fixed << omp_get_wtime() - sTime << "\n";
 }
 #endif /* NTCARD_H_ */
-
