@@ -14,6 +14,7 @@ nthits_SOURCES = \
         Common/ntHashIterator.hpp \
         Common/ntcard.hpp \
         Common/CBFilter.hpp \
+	Common/BloomFilter.hpp \
         nthits.cpp
 
 dist_doc_DATA = \
