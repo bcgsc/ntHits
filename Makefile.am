@@ -10,8 +10,6 @@ nthits_SOURCES = \
         Common/StringUtil.h \
         Common/Fcontrol.cpp \
         Common/Fcontrol.h \
-        Common/nthash.hpp \
-        Common/ntHashIterator.hpp \
         Common/ntcard.hpp \
         Common/CBFilter.hpp \
 	Common/BloomFilter.hpp \
@@ -24,6 +22,7 @@ dist_doc_DATA = \
 
 EXTRA_DIST=autogen.sh
 
+SUBDIRS = vendor
 
 # Check the C++ source code for white-space errors with clang-format.
 clang-format:
