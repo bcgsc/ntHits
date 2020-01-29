@@ -464,10 +464,6 @@ main(int argc, char** argv)
 	if (!nontCard) {
 		size_t histArray[10002];
 		getHist(inFiles, opt::k, opt::t, histArray, opt::g);
-		// for (int i = 0; i < 10; ++i) {
-		//	std::cerr << histArray[i] << std::endl;
-		//}
-		// exit(0);
 		int histIndex = 2, errCov = 1;
 		while (histIndex <= 10000 && histArray[histIndex] > histArray[histIndex + 1])
 			histIndex++;
