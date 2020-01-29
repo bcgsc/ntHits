@@ -10,6 +10,8 @@
 #define NTCARD_H_
 
 #include "vendor/ntHash/ntHashIterator.hpp"
+#include "vendor/ntHash/stHashIterator.hpp"
+
 #include <cassert>
 #include <cmath>
 #include <cstdlib>
@@ -29,6 +31,7 @@ using namespace std;
 namespace nts {
 unsigned nThrd = 1;
 unsigned kmLen = 64;
+unsigned gap = 0;
 size_t rBuck;
 unsigned rBits = 27;
 unsigned sBits = 11;
@@ -36,6 +39,7 @@ unsigned sMask;
 unsigned covMax = 10000;
 size_t nSamp = 2;
 bool samH = true;
+std::vector<std::vector<unsigned> > seedSet;
 } // namespace nts
 
 size_t
@@ -99,6 +103,17 @@ ntRead(const string& seq, uint16_t* t_Counter, size_t& totKmer)
 	}
 }
 
+inline void
+stRead(const string& seq, uint16_t* t_Counter, size_t& totKmer)
+{
+	stHashIterator itr(seq, nts::seedSet, 1, 1, nts::kmLen);
+	while (itr != itr.end()) {
+		ntComp((*itr)[0], t_Counter);
+		++itr;
+		++totKmer;
+	}
+}
+
 void
 getEfq(std::ifstream& in, uint16_t* t_Counter, size_t& totKmer)
 {
@@ -107,8 +122,13 @@ getEfq(std::ifstream& in, uint16_t* t_Counter, size_t& totKmer)
 		good = static_cast<bool>(getline(in, seq));
 		good = static_cast<bool>(getline(in, hseq));
 		good = static_cast<bool>(getline(in, hseq));
-		if (good)
-			ntRead(seq, t_Counter, totKmer);
+		if (good) {
+			if (nts::gap == 0) {
+				ntRead(seq, t_Counter, totKmer);
+			} else {
+				stRead(seq, t_Counter, totKmer);
+			}
+		}
 		good = static_cast<bool>(getline(in, hseq));
 	}
 }
@@ -124,7 +144,11 @@ getEfa(std::ifstream& in, uint16_t* t_Counter, size_t& totKmer)
 			line += seq;
 			good = static_cast<bool>(getline(in, seq));
 		}
-		ntRead(line, t_Counter, totKmer);
+		if (nts::gap == 0) {
+			ntRead(line, t_Counter, totKmer);
+		} else {
+			stRead(line, t_Counter, totKmer);
+		}
 	}
 }
 
@@ -142,7 +166,11 @@ getEsm(std::ifstream& in, const std::string& samSeq, uint16_t* t_Counter, size_t
 	do {
 		std::istringstream iss(samLine);
 		iss >> s1 >> s2 >> s3 >> s4 >> s5 >> s6 >> s7 >> s8 >> s9 >> seq >> s11;
-		ntRead(seq, t_Counter, totKmer);
+		if (nts::gap == 0) {
+			ntRead(seq, t_Counter, totKmer);
+		} else {
+			stRead(seq, t_Counter, totKmer);
+		}
 	} while (getline(in, samLine));
 }
 
@@ -184,13 +212,26 @@ compEst(const uint16_t* t_Counter, double& F0Mean, double fMean[])
 }
 
 void
-getHist(const vector<string>& inFiles, const unsigned kLen, const unsigned nThr, size_t histArray[])
+getHist(
+    const vector<string>& inFiles,
+    const unsigned kLen,
+    const unsigned nThr,
+    size_t histArray[],
+    const unsigned gapLen)
 {
-
 	double sTime = omp_get_wtime();
 
 	nts::nThrd = nThr;
 	nts::kmLen = kLen;
+	nts::gap = gapLen;
+
+	if (nts::gap != 0) {
+		std::string gap(nts::gap, '0');
+		std::string nonGap((kLen - nts::gap) / 2, '1');
+		std::vector<std::string> seedString;
+		seedString.push_back(nonGap + gap + nonGap);
+		nts::seedSet = stHashIterator::parseSeed(seedString);
+	}
 
 	size_t totalSize = 0;
 	for (unsigned file_i = 0; file_i < inFiles.size(); ++file_i)
