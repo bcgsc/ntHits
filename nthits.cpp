@@ -9,8 +9,8 @@
 
 #include "BloomFilter.hpp"
 #include "CBFilter.hpp"
-#include "ntHashIterator.hpp"
 #include "ntcard.hpp"
+#include "vendor/ntHash/ntHashIterator.hpp"
 
 #include "Uncompress.h"
 
