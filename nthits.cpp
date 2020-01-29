@@ -428,8 +428,8 @@ main(int argc, char** argv)
 	}
 
 	if (opt::g != 0) {
-		std::string gap(opt::gap, '0');
-		std::string nonGap((kList[0] - opt::gap) / 2, '1');
+		std::string gap(opt::g, '0');
+		std::string nonGap((opt::k - opt::g) / 2, '1');
 		std::vector<std::string> seedString;
 		seedString.push_back(nonGap + gap + nonGap);
 		opt::seedSet = stHashIterator::parseSeed(seedString);
