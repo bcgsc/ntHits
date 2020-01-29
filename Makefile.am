@@ -10,8 +10,6 @@ nthits_SOURCES = \
         Common/StringUtil.h \
         Common/Fcontrol.cpp \
         Common/Fcontrol.h \
-        Common/nthash.hpp \
-        Common/ntHashIterator.hpp \
         Common/ntcard.hpp \
         Common/CBFilter.hpp \
 	Common/BloomFilter.hpp \
