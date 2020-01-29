@@ -24,6 +24,7 @@ dist_doc_DATA = \
 
 EXTRA_DIST=autogen.sh
 
+SUBDIRS = vendor
 
 # Check the C++ source code for white-space errors with clang-format.
 clang-format:
