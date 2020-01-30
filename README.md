@@ -1,6 +1,6 @@
 ntHits 
 =
-ntHits is a method for identifying reapeats in high-throughput DNA sequencing data. 
+ntHits is a method for identifying repeats in high-throughput DNA sequencing data. 
 
 Compiling ntHits from GitHub
 ===========================
