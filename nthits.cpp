@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "BloomFilter.hpp"
+#include "vendor/btl_bloomfilter/BloomFilter.hpp"
 #include "CBFilter.hpp"
 #include "ntcard.hpp"
 #include "vendor/ntHash/ntHashIterator.hpp"
@@ -21,7 +21,7 @@
 #define PROGRAM "nthits"
 
 static const char VERSION_MESSAGE[] =
-    PROGRAM " 0.1.0 \n"
+    PROGRAM " 0.1.1 \n"
             "Written by Hamid Mohamadi.\n"
             "Copyright 2019 Canada's Michael Smith Genome Science Centre\n";
 
@@ -199,7 +199,7 @@ fqHit(std::ifstream& in, omp_lock_t* locks, BloomFilter& mydBF, CBFilter& mycBF,
 		if (good) {
 			ntHashIterator itr(rSeqs, opt::h + 1, opt::k);
 			while (itr != itr.end()) {
-				if (!mydBF.insert_make_change(*itr)) {
+				if (mydBF.insertAndCheck(*itr)) {
 					string canonKmer = rSeqs.substr(itr.pos(), opt::k);
 					getCanon(canonKmer);
 					if (opt::hitCap > 1) {
@@ -233,7 +233,7 @@ faHit(std::ifstream& in, omp_lock_t* locks, BloomFilter& mydBF, CBFilter& mycBF,
 		}
 		ntHashIterator itr(rSeqs, opt::h, opt::k);
 		while (itr != itr.end()) {
-			if (!mydBF.insert_make_change(*itr))
+			if (mydBF.insertAndCheck(*itr))
 				if (mycBF.insert_and_test(*itr)) {
 					string canonKmer = rSeqs.substr(itr.pos(), opt::k);
 					getCanon(canonKmer);
@@ -260,7 +260,7 @@ bfqHit(std::ifstream& in, BloomFilter& mydBF, CBFilter& mycBF, BloomFilter& myhB
 		if (good) {
 			ntHashIterator itr(rSeqs, opt::h + 1, opt::k);
 			while (itr != itr.end()) {
-				if (!mydBF.insert_make_change(*itr)) {
+				if (mydBF.insertAndCheck(*itr)) {
 					if (opt::hitCap > 1) {
 						if (mycBF.insert_and_test(*itr))
 							myhBF.insert(*itr);
@@ -291,7 +291,7 @@ bfaHit(std::ifstream& in, BloomFilter& mydBF, CBFilter& mycBF, BloomFilter& myhB
 		}
 		ntHashIterator itr(rSeqs, opt::h + 1, opt::k);
 		while (itr != itr.end()) {
-			if (!mydBF.insert_make_change(*itr)) {
+			if (mydBF.insertAndCheck(*itr)) {
 				if (opt::hitCap > 1) {
 					if (mycBF.insert_and_test(*itr))
 						myhBF.insert(*itr);
@@ -444,11 +444,11 @@ main(int argc, char** argv)
 	omp_set_num_threads(opt::t);
 #endif
 
-	BloomFilter mydBF(opt::dbfSize, 3, opt::k);
+	BloomFilter mydBF(((opt::hitSize + 7) / 8) * 8, 3, opt::k);
 	CBFilter mycBF(opt::cbfSize, opt::h, opt::k, opt::hitCap - 1);
 
 	if (opt::outbloom) {
-		BloomFilter myhBF(opt::hitSize, opt::h + 1, opt::k);
+		BloomFilter myhBF(((opt::hitSize + 7) / 8) * 8, opt::h + 1, opt::k);
 		for (unsigned file_i = 0; file_i < inFiles.size(); ++file_i) {
 			std::ifstream in(inFiles[file_i].c_str());
 			string firstLine;
