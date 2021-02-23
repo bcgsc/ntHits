@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "BloomFilter.hpp"
+#include "vendor/btl_bloomfilter/BloomFilter.hpp"
 #include "CBFilter.hpp"
 #include "ntcard.hpp"
 #include "vendor/ntHash/ntHashIterator.hpp"
@@ -445,10 +445,12 @@ main(int argc, char** argv)
 #endif
 
 	BloomFilter mydBF(((opt::dbfSize + 7) / 8) * 8, 3, opt::k);
+	std::cerr << "mydBF size: " << mydBF.getFilterSize() << std::endl;
 	CBFilter mycBF(opt::cbfSize, opt::h, opt::k, opt::hitCap - 1);
 
 	if (opt::outbloom) {
 		BloomFilter myhBF(((opt::hitSize + 7) / 8) * 8, opt::h + 1, opt::k);
+		std::cerr << "myhBF size: " << myhBF.getFilterSize() << std::endl;
 		for (unsigned file_i = 0; file_i < inFiles.size(); ++file_i) {
 			std::ifstream in(inFiles[file_i].c_str());
 			string firstLine;
