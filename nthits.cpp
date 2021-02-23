@@ -7,11 +7,10 @@
 #include <string>
 #include <vector>
 
-#include "vendor/btl_bloomfilter/BloomFilter.hpp"
+#include "BloomFilter.hpp"
 #include "CBFilter.hpp"
 #include "ntcard.hpp"
 #include "vendor/ntHash/ntHashIterator.hpp"
-#include "vendor/ntHash/stHashIterator.hpp"
 
 #include "Uncompress.h"
 
@@ -34,7 +33,6 @@ static const char USAGE_MESSAGE[] =
     " Options:\n"
     "\n"
     "  -t, --threads=N	use N parallel threads [16]\n"
-    "  -g, --gap=N	gap size [0]\n"
     "  -k, --kmer=N	the length of kmer [64]\n"
     "  -c, --cutoff=N	the maximum coverage of kmer in output\n"
     "  -p, --pref=STRING	the prefix for output file name [repeat]\n"
@@ -50,7 +48,6 @@ using namespace std;
 namespace opt {
 size_t t = 16;
 size_t k = 64;
-size_t g = 0;
 size_t h = 4;
 size_t hitCap = 0;
 size_t bytes = 6;
@@ -66,10 +63,9 @@ size_t fr;
 int outbloom = 0;
 int solid = 0;
 int eval = 0;
-std::vector<std::vector<unsigned> > seedSet;
 } // namespace opt
 
-static const char shortopts[] = "t:h:k:b:p:r:c:F:f:g:";
+static const char shortopts[] = "t:h:k:b:p:r:c:F:f:";
 
 enum
 {
@@ -77,16 +73,21 @@ enum
 	OPT_VERSION
 };
 
-static const struct option longopts[] = {
-	{ "threads", required_argument, NULL, 't' },    { "kmer", required_argument, NULL, 'k' },
-	{ "gap", required_argument, NULL, 'g' },        { "hash", required_argument, NULL, 'h' },
-	{ "bit", required_argument, NULL, 'b' },        { "cutoff", required_argument, NULL, 'c' },
-	{ "F0", required_argument, NULL, 'F' },         { "fr", required_argument, NULL, 'r' },
-	{ "f1", required_argument, NULL, 'f' },         { "prefix", required_argument, NULL, 'p' },
-	{ "outbloom", no_argument, &opt::outbloom, 1 }, { "solid", no_argument, &opt::solid, 1 },
-	{ "eval", no_argument, &opt::eval, 1 },         { "help", no_argument, NULL, OPT_HELP },
-	{ "version", no_argument, NULL, OPT_VERSION },  { NULL, 0, NULL, 0 }
-};
+static const struct option longopts[] = { { "threads", required_argument, NULL, 't' },
+	                                      { "kmer", required_argument, NULL, 'k' },
+	                                      { "hash", required_argument, NULL, 'h' },
+	                                      { "bit", required_argument, NULL, 'b' },
+	                                      { "cutoff", required_argument, NULL, 'c' },
+	                                      { "F0", required_argument, NULL, 'F' },
+	                                      { "fr", required_argument, NULL, 'r' },
+	                                      { "f1", required_argument, NULL, 'f' },
+	                                      { "prefix", required_argument, NULL, 'p' },
+	                                      { "outbloom", no_argument, &opt::outbloom, 1 },
+	                                      { "solid", no_argument, &opt::solid, 1 },
+	                                      { "eval", no_argument, &opt::eval, 1 },
+	                                      { "help", no_argument, NULL, OPT_HELP },
+	                                      { "version", no_argument, NULL, OPT_VERSION },
+	                                      { NULL, 0, NULL, 0 } };
 
 static const unsigned char b2r[256] = { 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', // 0
 	                                    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
@@ -196,38 +197,20 @@ fqHit(std::ifstream& in, omp_lock_t* locks, BloomFilter& mydBF, CBFilter& mycBF,
 			good2 = static_cast<bool>(getline(in, hseq));
 		}
 		if (good) {
-			if (opt::g == 0) {
-				ntHashIterator itr(rSeqs, opt::h + 1, opt::k);
-				while (itr != itr.end()) {
-					if (mydBF.insertAndCheck(*itr)) {
-						string canonKmer = rSeqs.substr(itr.pos(), opt::k);
-						getCanon(canonKmer);
-						if (opt::hitCap > 1) {
-							if (mycBF.insert_and_test(*itr)) {
-								hitSearchInsert((*itr)[0], canonKmer, locks, hitTable);
-							}
-						} else {
+			ntHashIterator itr(rSeqs, opt::h + 1, opt::k);
+			while (itr != itr.end()) {
+				if (mydBF.insertAndCheck(*itr)) {
+					string canonKmer = rSeqs.substr(itr.pos(), opt::k);
+					getCanon(canonKmer);
+					if (opt::hitCap > 1) {
+						if (mycBF.insert_and_test(*itr)) {
 							hitSearchInsert((*itr)[0], canonKmer, locks, hitTable);
 						}
+					} else {
+						hitSearchInsert((*itr)[0], canonKmer, locks, hitTable);
 					}
-					++itr;
 				}
-			} else {
-				stHashIterator itr(rSeqs, opt::seedSet, 1, opt::h + 1, opt::k);
-				while (itr != itr.end()) {
-					if (mydBF.insertAndCheck(*itr)) {
-						string canonKmer = rSeqs.substr(itr.pos(), opt::k);
-						getCanon(canonKmer);
-						if (opt::hitCap > 1) {
-							if (mycBF.insert_and_test(*itr)) {
-								hitSearchInsert((*itr)[0], canonKmer, locks, hitTable);
-							}
-						} else {
-							hitSearchInsert((*itr)[0], canonKmer, locks, hitTable);
-						}
-					}
-					++itr;
-				}
+				++itr;
 			}
 		}
 	}
@@ -248,28 +231,15 @@ faHit(std::ifstream& in, omp_lock_t* locks, BloomFilter& mydBF, CBFilter& mycBF,
 				good = static_cast<bool>(getline(in, seq));
 			}
 		}
-		if (opt::g == 0) {
-			ntHashIterator itr(rSeqs, opt::h, opt::k);
-			while (itr != itr.end()) {
-				if (mydBF.insertAndCheck(*itr))
-					if (mycBF.insert_and_test(*itr)) {
-						string canonKmer = rSeqs.substr(itr.pos(), opt::k);
-						getCanon(canonKmer);
-						hitSearchInsert((*itr)[0], canonKmer, locks, hitTable);
-					}
-				++itr;
-			}
-		} else {
-			stHashIterator itr(rSeqs, opt::seedSet, 1, opt::h, opt::k);
-			while (itr != itr.end()) {
-				if (mydBF.insertAndCheck(*itr))
-					if (mycBF.insert_and_test(*itr)) {
-						string canonKmer = rSeqs.substr(itr.pos(), opt::k);
-						getCanon(canonKmer);
-						hitSearchInsert((*itr)[0], canonKmer, locks, hitTable);
-					}
-				++itr;
-			}
+		ntHashIterator itr(rSeqs, opt::h, opt::k);
+		while (itr != itr.end()) {
+			if (mydBF.insertAndCheck(*itr))
+				if (mycBF.insert_and_test(*itr)) {
+					string canonKmer = rSeqs.substr(itr.pos(), opt::k);
+					getCanon(canonKmer);
+					hitSearchInsert((*itr)[0], canonKmer, locks, hitTable);
+				}
+			++itr;
 		}
 	}
 }
@@ -288,32 +258,17 @@ bfqHit(std::ifstream& in, BloomFilter& mydBF, CBFilter& mycBF, BloomFilter& myhB
 			good2 = static_cast<bool>(getline(in, hseq));
 		}
 		if (good) {
-			if (opt::g == 0) {
-				ntHashIterator itr(rSeqs, opt::h + 1, opt::k);
-				while (itr != itr.end()) {
-					if (mydBF.insertAndCheck(*itr)) {
-						if (opt::hitCap > 1) {
-							if (mycBF.insert_and_test(*itr))
-								myhBF.insert(*itr);
-						} else {
+			ntHashIterator itr(rSeqs, opt::h + 1, opt::k);
+			while (itr != itr.end()) {
+				if (mydBF.insertAndCheck(*itr)) {
+					if (opt::hitCap > 1) {
+						if (mycBF.insert_and_test(*itr))
 							myhBF.insert(*itr);
-						}
+					} else {
+						myhBF.insert(*itr);
 					}
-					++itr;
 				}
-			} else {
-				stHashIterator itr(rSeqs, opt::seedSet, 1, opt::h + 1, opt::k);
-				while (itr != itr.end()) {
-					if (mydBF.insertAndCheck(*itr)) {
-						if (opt::hitCap > 1) {
-							if (mycBF.insert_and_test(*itr))
-								myhBF.insert(*itr);
-						} else {
-							myhBF.insert(*itr);
-						}
-					}
-					++itr;
-				}
+				++itr;
 			}
 		}
 	}
@@ -334,32 +289,17 @@ bfaHit(std::ifstream& in, BloomFilter& mydBF, CBFilter& mycBF, BloomFilter& myhB
 				good = static_cast<bool>(getline(in, seq));
 			}
 		}
-		if (opt::g == 0) {
-			ntHashIterator itr(rSeqs, opt::h + 1, opt::k);
-			while (itr != itr.end()) {
-				if (mydBF.insertAndCheck(*itr)) {
-					if (opt::hitCap > 1) {
-						if (mycBF.insert_and_test(*itr))
-							myhBF.insert(*itr);
-					} else {
+		ntHashIterator itr(rSeqs, opt::h + 1, opt::k);
+		while (itr != itr.end()) {
+			if (mydBF.insertAndCheck(*itr)) {
+				if (opt::hitCap > 1) {
+					if (mycBF.insert_and_test(*itr))
 						myhBF.insert(*itr);
-					}
+				} else {
+					myhBF.insert(*itr);
 				}
-				++itr;
 			}
-		} else {
-			stHashIterator itr(rSeqs, opt::seedSet, 1, opt::h + 1, opt::k);
-			while (itr != itr.end()) {
-				if (mydBF.insertAndCheck(*itr)) {
-					if (opt::hitCap > 1) {
-						if (mycBF.insert_and_test(*itr))
-							myhBF.insert(*itr);
-					} else {
-						myhBF.insert(*itr);
-					}
-				}
-				++itr;
-			}
+			++itr;
 		}
 	}
 }
@@ -385,9 +325,6 @@ main(int argc, char** argv)
 			break;
 		case 'k':
 			arg >> opt::k;
-			break;
-		case 'g':
-			arg >> opt::g;
 			break;
 		case 'b':
 			arg >> opt::m;
@@ -427,21 +364,8 @@ main(int argc, char** argv)
 		die = true;
 	}
 
-	if (opt::g != 0) {
-		std::string gap(opt::g, '0');
-		std::string nonGap((opt::k - opt::g) / 2, '1');
-		std::vector<std::string> seedString;
-		seedString.push_back(nonGap + gap + nonGap);
-		opt::seedSet = stHashIterator::parseSeed(seedString);
-	}
-
 	if (opt::k == 0) {
 		std::cerr << PROGRAM ": missing argument -k ... \n";
-		die = true;
-	}
-
-	if (opt::g != 0 && (opt::g % 2 != opt::k % 2)) {
-		std::cerr << PROGRAM "Gap size and kmer must have the same modulus\n";
 		die = true;
 	}
 
@@ -463,7 +387,7 @@ main(int argc, char** argv)
 	}
 	if (!nontCard) {
 		size_t histArray[10002];
-		getHist(inFiles, opt::k, opt::t, histArray, opt::g);
+		getHist(inFiles, opt::k, opt::t, histArray);
 
 		int histIndex = 2, errCov = 1;
 		while (histIndex <= 10000 && histArray[histIndex] > histArray[histIndex + 1])
