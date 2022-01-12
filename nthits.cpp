@@ -440,11 +440,11 @@ main(int argc, char** argv)
 	omp_set_num_threads(opt::t);
 #endif
 
-	btllib::KmerBloomFilter mydBF(opt::dbfSize, 3, opt::k);
+	btllib::KmerBloomFilter mydBF(opt::dbfSize / 8, 3, opt::k);
 	CBFilter mycBF(opt::cbfSize, opt::h, opt::k, opt::hitCap - 1);
 
 	if (opt::outbloom) {
-		btllib::KmerBloomFilter myhBF(opt::hitSize, opt::h + 1, opt::k);
+		btllib::KmerBloomFilter myhBF(opt::hitSize / 8, opt::h + 1, opt::k);
 		for (unsigned file_i = 0; file_i < inFiles.size(); ++file_i) {
 			std::ifstream in(inFiles[file_i].c_str());
 			string firstLine;
