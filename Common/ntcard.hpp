@@ -9,7 +9,8 @@
 #ifndef NTCARD_H_
 #define NTCARD_H_
 
-#include "vendor/ntHash/ntHashIterator.hpp"
+#include "btllib/nthash.hpp"
+
 #include <cassert>
 #include <cmath>
 #include <cstdlib>
@@ -91,10 +92,9 @@ ntComp(const uint64_t hVal, uint16_t* t_Counter)
 inline void
 ntRead(const string& seq, uint16_t* t_Counter, size_t& totKmer)
 {
-	ntHashIterator itr(seq, 1, nts::kmLen);
-	while (itr != itr.end()) {
-		ntComp((*itr)[0], t_Counter);
-		++itr;
+	btllib::NtHash nthash(seq, 1, nts::kmLen);
+	while (nthash.roll()) {
+		ntComp(nthash.hashes()[0], t_Counter);
 		++totKmer;
 	}
 }

@@ -1,6 +1,6 @@
 bin_PROGRAMS = nthits
 
-nthits_CPPFLAGS = -I$(top_srcdir)/Common
+nthits_CPPFLAGS = -I$(top_srcdir)/Common -I$(top_srcdir)/btllib/include
 
 nthits_SOURCES = \
         Common/Uncompress.cpp \
@@ -12,7 +12,6 @@ nthits_SOURCES = \
         Common/Fcontrol.h \
         Common/ntcard.hpp \
         Common/CBFilter.hpp \
-	Common/BloomFilter.hpp \
         nthits.cpp
 
 dist_doc_DATA = \
@@ -21,8 +20,6 @@ dist_doc_DATA = \
 	README.md
 
 EXTRA_DIST=autogen.sh
-
-SUBDIRS = vendor
 
 # Check the C++ source code for white-space errors with clang-format.
 clang-format:

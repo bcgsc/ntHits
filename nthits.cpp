@@ -7,10 +7,10 @@
 #include <string>
 #include <vector>
 
-#include "BloomFilter.hpp"
 #include "CBFilter.hpp"
 #include "ntcard.hpp"
-#include "vendor/ntHash/ntHashIterator.hpp"
+#include "btllib/bloom_filter.hpp"
+#include "btllib/nthash.hpp"
 
 #include "Uncompress.h"
 
@@ -184,7 +184,7 @@ hitSearch(const uint64_t kint, const string& kmer, entry* T)
 }
 
 void
-fqHit(std::ifstream& in, omp_lock_t* locks, BloomFilter& mydBF, CBFilter& mycBF, entry* hitTable)
+fqHit(std::ifstream& in, omp_lock_t* locks, btllib::KmerBloomFilter& mydBF, CBFilter& mycBF, entry* hitTable)
 {
 	bool good, good2 = true;
 #pragma omp parallel
@@ -197,27 +197,26 @@ fqHit(std::ifstream& in, omp_lock_t* locks, BloomFilter& mydBF, CBFilter& mycBF,
 			good2 = static_cast<bool>(getline(in, hseq));
 		}
 		if (good) {
-			ntHashIterator itr(rSeqs, opt::h + 1, opt::k);
-			while (itr != itr.end()) {
-				if (!mydBF.insert_make_change(*itr)) {
-					string canonKmer = rSeqs.substr(itr.pos(), opt::k);
+			btllib::NtHash nthash(rSeqs, opt::h + 1, opt::k);
+			while (nthash.roll()) {
+				if (mydBF.contains_insert(nthash.hashes())) {
+					string canonKmer = rSeqs.substr(nthash.get_pos(), opt::k);
 					getCanon(canonKmer);
 					if (opt::hitCap > 1) {
-						if (mycBF.insert_and_test(*itr)) {
-							hitSearchInsert((*itr)[0], canonKmer, locks, hitTable);
+						if (mycBF.insert_and_test(nthash.hashes())) {
+							hitSearchInsert(nthash.hashes()[0], canonKmer, locks, hitTable);
 						}
 					} else {
-						hitSearchInsert((*itr)[0], canonKmer, locks, hitTable);
+						hitSearchInsert(nthash.hashes()[0], canonKmer, locks, hitTable);
 					}
 				}
-				++itr;
 			}
 		}
 	}
 }
 
 void
-faHit(std::ifstream& in, omp_lock_t* locks, BloomFilter& mydBF, CBFilter& mycBF, entry* hitTable)
+faHit(std::ifstream& in, omp_lock_t* locks, btllib::KmerBloomFilter& mydBF, CBFilter& mycBF, entry* hitTable)
 {
 	bool good = true;
 #pragma omp parallel
@@ -231,21 +230,20 @@ faHit(std::ifstream& in, omp_lock_t* locks, BloomFilter& mydBF, CBFilter& mycBF,
 				good = static_cast<bool>(getline(in, seq));
 			}
 		}
-		ntHashIterator itr(rSeqs, opt::h, opt::k);
-		while (itr != itr.end()) {
-			if (!mydBF.insert_make_change(*itr))
-				if (mycBF.insert_and_test(*itr)) {
-					string canonKmer = rSeqs.substr(itr.pos(), opt::k);
+		btllib::NtHash nthash(rSeqs, opt::h, opt::k);
+		while (nthash.roll()) {
+			if (mydBF.contains_insert(nthash.hashes()))
+				if (mycBF.insert_and_test(nthash.hashes())) {
+					string canonKmer = rSeqs.substr(nthash.get_pos(), opt::k);
 					getCanon(canonKmer);
-					hitSearchInsert((*itr)[0], canonKmer, locks, hitTable);
+					hitSearchInsert(nthash.hashes()[0], canonKmer, locks, hitTable);
 				}
-			++itr;
 		}
 	}
 }
 
 void
-bfqHit(std::ifstream& in, BloomFilter& mydBF, CBFilter& mycBF, BloomFilter& myhBF)
+bfqHit(std::ifstream& in, btllib::KmerBloomFilter& mydBF, CBFilter& mycBF, btllib::KmerBloomFilter& myhBF)
 {
 	bool good, good2 = true;
 #pragma omp parallel
@@ -258,24 +256,23 @@ bfqHit(std::ifstream& in, BloomFilter& mydBF, CBFilter& mycBF, BloomFilter& myhB
 			good2 = static_cast<bool>(getline(in, hseq));
 		}
 		if (good) {
-			ntHashIterator itr(rSeqs, opt::h + 1, opt::k);
-			while (itr != itr.end()) {
-				if (!mydBF.insert_make_change(*itr)) {
+			btllib::NtHash nthash(rSeqs, opt::h + 1, opt::k);
+			while (nthash.roll()) {
+				if (mydBF.contains_insert(nthash.hashes())) {
 					if (opt::hitCap > 1) {
-						if (mycBF.insert_and_test(*itr))
-							myhBF.insert(*itr);
+						if (mycBF.insert_and_test(nthash.hashes()))
+							myhBF.insert(nthash.hashes());
 					} else {
-						myhBF.insert(*itr);
+						myhBF.insert(nthash.hashes());
 					}
 				}
-				++itr;
 			}
 		}
 	}
 }
 
 void
-bfaHit(std::ifstream& in, BloomFilter& mydBF, CBFilter& mycBF, BloomFilter& myhBF)
+bfaHit(std::ifstream& in, btllib::KmerBloomFilter& mydBF, CBFilter& mycBF, btllib::KmerBloomFilter& myhBF)
 {
 	bool good = true;
 #pragma omp parallel
@@ -289,17 +286,16 @@ bfaHit(std::ifstream& in, BloomFilter& mydBF, CBFilter& mycBF, BloomFilter& myhB
 				good = static_cast<bool>(getline(in, seq));
 			}
 		}
-		ntHashIterator itr(rSeqs, opt::h + 1, opt::k);
-		while (itr != itr.end()) {
-			if (!mydBF.insert_make_change(*itr)) {
+		btllib::NtHash nthash(rSeqs, opt::h + 1, opt::k);
+		while (nthash.roll()) {
+			if (mydBF.contains_insert(nthash.hashes())) {
 				if (opt::hitCap > 1) {
-					if (mycBF.insert_and_test(*itr))
-						myhBF.insert(*itr);
+					if (mycBF.insert_and_test(nthash.hashes()))
+						myhBF.insert(nthash.hashes());
 				} else {
-					myhBF.insert(*itr);
+					myhBF.insert(nthash.hashes());
 				}
 			}
-			++itr;
 		}
 	}
 }
@@ -444,11 +440,11 @@ main(int argc, char** argv)
 	omp_set_num_threads(opt::t);
 #endif
 
-	BloomFilter mydBF(opt::dbfSize, 3, opt::k);
+	btllib::KmerBloomFilter mydBF(opt::dbfSize, 3, opt::k);
 	CBFilter mycBF(opt::cbfSize, opt::h, opt::k, opt::hitCap - 1);
 
 	if (opt::outbloom) {
-		BloomFilter myhBF(opt::hitSize, opt::h + 1, opt::k);
+		btllib::KmerBloomFilter myhBF(opt::hitSize, opt::h + 1, opt::k);
 		for (unsigned file_i = 0; file_i < inFiles.size(); ++file_i) {
 			std::ifstream in(inFiles[file_i].c_str());
 			string firstLine;
@@ -476,7 +472,7 @@ main(int argc, char** argv)
 				hstm << "repeat_k" << opt::k << ".bf";
 		} else
 			hstm << opt::prefix << "_k" << opt::k << ".bf";
-		myhBF.storeFilter(hstm.str().c_str());
+		myhBF.save(hstm.str());
 	} else {
 		entry* hitTable = new entry[opt::hitSize];
 		for (size_t i = 0; i < opt::hitSize; i++)
@@ -535,7 +531,7 @@ main(int argc, char** argv)
 			dskstm >> dsk_kmer >> dsk_count;
 			// cerr << dsk_kmer << "\t" << dsk_count << "\n";
 			// if (dsk_count >= opt::hitCap) {
-			uint64_t dsk_hash = NTC64(dsk_kmer.c_str(), opt::k);
+			uint64_t dsk_hash = btllib::ntc64(dsk_kmer.c_str(), opt::k);
 			unsigned nthits_count = hitSearch(dsk_hash, dsk_kmer, hitTable);
 			if (nthits_count != 0) {
 				std::cout << dsk_kmer << "\t" << dsk_count << "\t" << nthits_count + opt::hitCap
@@ -544,7 +540,7 @@ main(int argc, char** argv)
 				std::string dsk_can(dsk_kmer);
 				getCanon(dsk_can);
 				if (dsk_can != dsk_kmer) {
-					uint64_t dsk_hash = NTC64(dsk_can.c_str(), opt::k);
+					uint64_t dsk_hash = btllib::ntc64(dsk_can.c_str(), opt::k);
 					unsigned nthits_count = hitSearch(dsk_hash, dsk_can, hitTable);
 					if (nthits_count != 0) {
 						std::cout << dsk_can << "\t" << dsk_count << "\t"
