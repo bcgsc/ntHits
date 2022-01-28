@@ -1,7 +1,7 @@
 jobs:
 - job: linux
   pool:
-    vmImage: Ubuntu 16.04
+    vmImage: ubuntu-latest
   steps:
   - script: |
       sudo apt-get update -qq
