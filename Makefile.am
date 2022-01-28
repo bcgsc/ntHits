@@ -12,6 +12,12 @@ nthits_SOURCES = \
         Common/Fcontrol.h \
         Common/ntcard.hpp \
         Common/CBFilter.hpp \
+        btllib/include/btllib/nthash.hpp \
+        btllib/include/btllib/status.hpp \
+        btllib/include/btllib/bloom_filter.hpp \
+        btllib/include/btllib/counting_bloom_filter.hpp \
+        btllib/include/btllib/seq_reader.hpp \
+        btllib/include/external/cpptoml.hpp \
         nthits.cpp
 
 dist_doc_DATA = \
