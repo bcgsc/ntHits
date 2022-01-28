@@ -28,7 +28,7 @@ static const char VERSION_MESSAGE[] =
 static const char USAGE_MESSAGE[] =
     "Usage: " PROGRAM " [OPTION]... FILES...\n"
     "Reports the most frequent k-mers in FILES(>=1).\n"
-    "Accepatble file formats: fastq, fasta, gz, bz, zip.\n"
+    "Acceptable file formats: fastq, fasta, gz, bz, zip.\n"
     "\n"
     " Options:\n"
     "\n"
@@ -37,7 +37,7 @@ static const char USAGE_MESSAGE[] =
     "  -c, --cutoff=N	the maximum coverage of kmer in output\n"
     "  -p, --pref=STRING	the prefix for output file name [repeat]\n"
     "  --outbloom	output the most frequent k-mers in a Bloom filter\n"
-    "  --solid	output the solid k-mers (non-errornous k-mers)\n"
+    "  --solid	output the solid k-mers (non-erroneous k-mers)\n"
     "  --help	display this help and exit\n"
     "  --version	output version information and exit\n"
     "\n"
