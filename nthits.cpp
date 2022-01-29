@@ -8,9 +8,9 @@
 #include <vector>
 
 #include "CBFilter.hpp"
-#include "ntcard.hpp"
 #include "btllib/bloom_filter.hpp"
 #include "btllib/nthash.hpp"
+#include "ntcard.hpp"
 
 #include "Uncompress.h"
 
@@ -184,7 +184,12 @@ hitSearch(const uint64_t kint, const string& kmer, entry* T)
 }
 
 void
-fqHit(std::ifstream& in, omp_lock_t* locks, btllib::KmerBloomFilter& mydBF, CBFilter& mycBF, entry* hitTable)
+fqHit(
+    std::ifstream& in,
+    omp_lock_t* locks,
+    btllib::KmerBloomFilter& mydBF,
+    CBFilter& mycBF,
+    entry* hitTable)
 {
 	bool good, good2 = true;
 #pragma omp parallel
@@ -216,7 +221,12 @@ fqHit(std::ifstream& in, omp_lock_t* locks, btllib::KmerBloomFilter& mydBF, CBFi
 }
 
 void
-faHit(std::ifstream& in, omp_lock_t* locks, btllib::KmerBloomFilter& mydBF, CBFilter& mycBF, entry* hitTable)
+faHit(
+    std::ifstream& in,
+    omp_lock_t* locks,
+    btllib::KmerBloomFilter& mydBF,
+    CBFilter& mycBF,
+    entry* hitTable)
 {
 	bool good = true;
 #pragma omp parallel
@@ -243,7 +253,11 @@ faHit(std::ifstream& in, omp_lock_t* locks, btllib::KmerBloomFilter& mydBF, CBFi
 }
 
 void
-bfqHit(std::ifstream& in, btllib::KmerBloomFilter& mydBF, CBFilter& mycBF, btllib::KmerBloomFilter& myhBF)
+bfqHit(
+    std::ifstream& in,
+    btllib::KmerBloomFilter& mydBF,
+    CBFilter& mycBF,
+    btllib::KmerBloomFilter& myhBF)
 {
 	bool good, good2 = true;
 #pragma omp parallel
@@ -272,7 +286,11 @@ bfqHit(std::ifstream& in, btllib::KmerBloomFilter& mydBF, CBFilter& mycBF, btlli
 }
 
 void
-bfaHit(std::ifstream& in, btllib::KmerBloomFilter& mydBF, CBFilter& mycBF, btllib::KmerBloomFilter& myhBF)
+bfaHit(
+    std::ifstream& in,
+    btllib::KmerBloomFilter& mydBF,
+    CBFilter& mycBF,
+    btllib::KmerBloomFilter& myhBF)
 {
 	bool good = true;
 #pragma omp parallel
