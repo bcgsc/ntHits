@@ -20,6 +20,7 @@ Compiling ntHits from source
 To compile and install ntHits in /usr/local:
 
 ```
+$ cd btllib && ./compile && cd ..
 $ ./configure
 $ make 
 $ sudo make install 
@@ -28,6 +29,7 @@ $ sudo make install
 To install ntHits in a specified directory:
 
 ```
+$ cd btllib && ./compile && cd ..
 $ ./configure --prefix=/opt/ntHits
 $ make 
 $ make install 
@@ -58,7 +60,7 @@ Run ntHits
 nthits [OPTIONS] ... [FILE]
 ```
 Parameters:
-  * `-k`,  `--kmer=SIZE`: the length of *k*-mer `[64]`
+  * `-k`,  `--kmer=SIZE`: the length of *k*-mer. Multiple `-k` parameters allowed. `[64]`
   * `-t`,  `--threads=N`: use N parallel threads `[16]`
   * `-c`,  `--cutoff=N`: the maximum coverage of *k*-mer in output 
   * `-p`,  `--pref=STRING`: the prefix for output file name `[repeat]`

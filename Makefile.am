@@ -2,14 +2,10 @@ bin_PROGRAMS = nthits
 
 nthits_CPPFLAGS = -I$(top_srcdir)/Common -I$(top_srcdir)/btllib/include
 
+nthits_LDADD = -L$(top_srcdir)/btllib/lib -lbtllib
+
 nthits_SOURCES = \
-        Common/Uncompress.cpp \
-        Common/Uncompress.h \
-        Common/SignalHandler.cpp \
-        Common/SignalHandler.h \
         Common/StringUtil.h \
-        Common/Fcontrol.cpp \
-        Common/Fcontrol.h \
         Common/ntcard.hpp \
         Common/CBFilter.hpp \
         btllib/include/btllib/nthash.hpp \
