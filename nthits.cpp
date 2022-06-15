@@ -1,5 +1,5 @@
+#include <argparse/argparse.hpp>
 #include <cmath>
-#include <getopt.h>
 #include <iomanip>
 #include <iostream>
 #include <string>
@@ -14,30 +14,10 @@
 #include <omp.h>
 #endif
 
-#define PROGRAM "nthits"
-
-static const char VERSION_MESSAGE[] =
-    PROGRAM " 0.1.0 \n"
-            "Written by Hamid Mohamadi.\n"
-            "Copyright 2019 Canada's Michael Smith Genome Science Centre\n";
-
-static const char USAGE_MESSAGE[] =
-    "Usage: " PROGRAM " [OPTION]... FILES...\n"
-    "Reports the most frequent k-mers in FILES(>=1).\n"
-    "Accepatble file formats: fastq, fasta, gz, bz, zip.\n"
-    "\n"
-    " Options:\n"
-    "\n"
-    "  -t, --threads=N	use N parallel threads [16]\n"
-    "  -k, --kmer=N	the length of kmer [64]\n"
-    "  -c, --cutoff=N	the maximum coverage of kmer in output\n"
-    "  -p, --pref=STRING	the prefix for output file name [repeat]\n"
-    "  --outbloom	output the most frequent k-mers in a Bloom filter\n"
-    "  --solid	output the solid k-mers (non-errornous k-mers)\n"
-    "  --help	display this help and exit\n"
-    "  --version	output version information and exit\n"
-    "\n"
-    "Report bugs to hmohamadi@bcgsc.ca.\n";
+#define PROGRAM_NAME "ntHits"
+#define PROGRAM_VERSION "0.0.1"
+#define PROGRAM_DESCRIPTION "Reports the most frequent k-mers in input files."
+#define PROGRAM_COPYRIGHT "Copyright 2019 Canada's Michael Smith Genome Science Centre"
 
 using namespace std;
 
@@ -56,34 +36,10 @@ string prefix;
 size_t F0;
 size_t f1;
 size_t fr;
-int outbloom = 0;
-int solid = 0;
-int eval = 0;
+bool outbloom = 0;
+bool solid = 0;
+bool eval = 0;
 } // namespace opt
-
-static const char shortopts[] = "t:h:k:b:p:r:c:F:f:";
-
-enum
-{
-	OPT_HELP = 1,
-	OPT_VERSION
-};
-
-static const struct option longopts[] = { { "threads", required_argument, NULL, 't' },
-	                                      { "kmer", required_argument, NULL, 'k' },
-	                                      { "hash", required_argument, NULL, 'h' },
-	                                      { "bit", required_argument, NULL, 'b' },
-	                                      { "cutoff", required_argument, NULL, 'c' },
-	                                      { "F0", required_argument, NULL, 'F' },
-	                                      { "fr", required_argument, NULL, 'r' },
-	                                      { "f1", required_argument, NULL, 'f' },
-	                                      { "prefix", required_argument, NULL, 'p' },
-	                                      { "outbloom", no_argument, &opt::outbloom, 1 },
-	                                      { "solid", no_argument, &opt::solid, 1 },
-	                                      { "eval", no_argument, &opt::eval, 1 },
-	                                      { "help", no_argument, NULL, OPT_HELP },
-	                                      { "version", no_argument, NULL, OPT_VERSION },
-	                                      { NULL, 0, NULL, 0 } };
 
 static const unsigned char b2r[256] = { 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', // 0
 	                                    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
@@ -305,82 +261,93 @@ main(int argc, char** argv)
 {
 	double sTime = omp_get_wtime();
 
-	bool die = false;
 	bool nontCard = false;
-	for (int c; (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) {
-		std::istringstream arg(optarg != NULL ? optarg : "");
-		switch (c) {
-		case '?':
-			die = true;
-			break;
-		case 't':
-			arg >> opt::t;
-			break;
-		case 'h':
-			arg >> opt::h;
-			break;
-		case 'k':
-			arg >> opt::k;
-			break;
-		case 'b':
-			arg >> opt::m;
-			break;
-		case 'c':
-			arg >> opt::hitCap;
-			break;
-		case 'F':
-			arg >> opt::F0;
-			nontCard = true;
-			break;
-		case 'r':
-			arg >> opt::fr;
-			nontCard = true;
-			break;
-		case 'f':
-			arg >> opt::f1;
-			nontCard = true;
-			break;
-		case 'p':
-			arg >> opt::prefix;
-			break;
-		case OPT_HELP:
-			std::cerr << USAGE_MESSAGE;
-			exit(EXIT_SUCCESS);
-		case OPT_VERSION:
-			std::cerr << VERSION_MESSAGE;
-			exit(EXIT_SUCCESS);
-		}
-		if (optarg != NULL && !arg.eof()) {
-			std::cerr << PROGRAM ": invalid option: `-" << (char)c << optarg << "'\n";
-			exit(EXIT_FAILURE);
-		}
-	}
-	if (argc - optind < 1) {
-		std::cerr << PROGRAM ": missing arguments\n";
-		die = true;
+	std::vector<std::string> inFiles;
+
+	auto default_args = argparse::default_arguments::none;
+	argparse::ArgumentParser parser(PROGRAM_NAME, PROGRAM_VERSION, default_args);
+	parser.add_description(PROGRAM_DESCRIPTION);
+	parser.add_epilog(PROGRAM_COPYRIGHT);
+
+	parser.add_argument("-t", "--threads")
+	    .help("Number of parallel threads")
+	    .default_value(16U)
+	    .scan<'u', unsigned>();
+
+	parser.add_argument("-k", "--kmer")
+	    .help("k-mer length")
+	    .default_value(64U)
+	    .scan<'u', unsigned>();
+
+	parser.add_argument("-h", "--hashes")
+	    .help("Number of hashes to generate per k-mer/spaced seed")
+	    .default_value(4U)
+	    .scan<'u', unsigned>();
+
+	parser.add_argument("-c", "--cutoff")
+	    .help("k-mer cutoff threshold")
+	    .required()
+	    .scan<'u', unsigned>();
+
+	parser.add_argument("-p", "--prefix")
+	    .help("Output files' prefix")
+	    .default_value(std::string("repeat"));
+
+	parser.add_argument("--outbloom")
+	    .help("Output the most frequent k-mers in a Bloom filter")
+	    .default_value(false)
+	    .implicit_value(true);
+
+	parser.add_argument("--solid")
+	    .help("Output the solid k-mers (non-erroneous k-mers)")
+	    .default_value(false)
+	    .implicit_value(true);
+
+	parser.add_argument("-b", "--bit").default_value(16U).scan<'u', unsigned>();
+	parser.add_argument("-F").scan<'u', unsigned>();
+	parser.add_argument("-f").scan<'u', unsigned>();
+	parser.add_argument("-r").scan<'u', unsigned>();
+
+	parser.add_argument("files").help("Input files").required().remaining();
+
+	try {
+		parser.parse_args(argc, argv);
+	} catch (const std::runtime_error& err) {
+		std::cerr << err.what() << std::endl;
+		std::cerr << parser;
+		std::exit(1);
 	}
 
-	if (opt::k == 0) {
-		std::cerr << PROGRAM ": missing argument -k ... \n";
-		die = true;
+	opt::t = parser.get<unsigned>("-t");
+	opt::k = parser.get<unsigned>("-k");
+	opt::h = parser.get<unsigned>("-h");
+	opt::m = parser.get<unsigned>("-b");
+	opt::hitCap = parser.get<unsigned>("-c");
+	opt::prefix = parser.get("-p");
+	opt::outbloom = parser.get<bool>("--outbloom");
+	opt::solid = parser.get<bool>("--solid");
+
+	if (parser.is_used("-F")) {
+		opt::F0 = parser.get<unsigned>("-F");
+		nontCard = true;
 	}
 
-	if (die) {
-		std::cerr << "Try `" << PROGRAM << " --help' for more information.\n";
-		exit(EXIT_FAILURE);
+	if (parser.is_used("-r")) {
+		opt::fr = parser.get<unsigned>("-r");
+		nontCard = true;
 	}
 
-	vector<string> inFiles;
-	for (int i = optind; i < argc; ++i) {
-		string file(argv[i]);
-		if (file[0] == '@') {
-			string inName;
-			ifstream inList(file.substr(1, file.length()).c_str());
-			while (getline(inList, inName))
-				inFiles.push_back(inName);
-		} else
-			inFiles.push_back(file);
+	if (parser.is_used("-f")) {
+		opt::f1 = parser.get<unsigned>("-f");
+		nontCard = true;
 	}
+
+	try {
+		inFiles = parser.get<std::vector<std::string> >("files");
+	} catch (std::logic_error& e) {
+		std::cerr << "No files provided" << std::endl;
+	}
+
 	if (!nontCard) {
 		size_t histArray[10002];
 		getHist(inFiles, opt::k, opt::t, histArray);
