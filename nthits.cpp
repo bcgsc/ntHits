@@ -1,9 +1,7 @@
 #include <cmath>
-#include <fstream>
 #include <getopt.h>
 #include <iomanip>
 #include <iostream>
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -11,8 +9,6 @@
 #include "CBFilter.hpp"
 #include "ntcard.hpp"
 #include "vendor/ntHash/ntHashIterator.hpp"
-
-#include "Uncompress.h"
 
 #ifdef _OPENMP
 #include <omp.h>
