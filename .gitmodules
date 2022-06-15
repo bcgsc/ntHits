@@ -1,0 +1,3 @@
+[submodule "vendor/btllib"]
+	path = vendor/btllib
+	url = git@github.com:bcgsc/btllib.git
