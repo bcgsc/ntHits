@@ -16,9 +16,15 @@ include_directories("vendor/btllib/include"
         "vendor/btllib/subprojects/sdsl-lite/include")
 
 include_directories(Common)
-include_directories(vendor/ntHash)
-include_directories(.)
+
+add_custom_command(
+        OUTPUT ${PROJECT_BINARY_DIR}/btllib/lib/libbtllib.a
+        COMMAND ${PROJECT_SOURCE_DIR}/vendor/btllib/compile --prefix ${PROJECT_BINARY_DIR}/btllib
+        USES_TERMINAL
+)
+set_property(SOURCE nthits.cpp APPEND PROPERTY OBJECT_DEPENDS ${PROJECT_BINARY_DIR}/btllib/lib/libbtllib.a)
 
 file(GLOB SRC_FILES ${PROJECT_SOURCE_DIR}/src/*.cpp)
 
 add_executable(ntHits ${SRC_FILES} Common/Fcontrol.cpp Common/SignalHandler.cpp nthits.cpp)
+target_link_libraries(ntHits ${PROJECT_BINARY_DIR}/btllib/lib/libbtllib.a)

@@ -9,7 +9,7 @@
 #ifndef NTCARD_H_
 #define NTCARD_H_
 
-#include "vendor/ntHash/ntHashIterator.hpp"
+#include <btllib/nthash.hpp>
 #include <cassert>
 #include <cmath>
 #include <cstdlib>
@@ -91,10 +91,9 @@ ntComp(const uint64_t hVal, uint16_t* t_Counter)
 inline void
 ntRead(const string& seq, uint16_t* t_Counter, size_t& totKmer)
 {
-	ntHashIterator itr(seq, 1, nts::kmLen);
-	while (itr != itr.end()) {
-		ntComp((*itr)[0], t_Counter);
-		++itr;
+	btllib::NtHash nth(seq, 1, nts::kmLen);
+	while (nth.roll()) {
+		ntComp(nth.hashes()[0], t_Counter);
 		++totKmer;
 	}
 }
@@ -167,8 +166,8 @@ compEst(const uint16_t* t_Counter, double& F0Mean, double fMean[])
 		pMean[i] /= 1.0 * nts::nSamp;
 	}
 
-	F0Mean = (ssize_t)(
-	    (nts::rBits * log(2) - log(pMean[0])) * 1.0 * ((size_t)1 << (nts::sBits + nts::rBits)));
+	F0Mean =
+	    (ssize_t)((nts::rBits * log(2) - log(pMean[0])) * 1.0 * ((size_t)1 << (nts::sBits + nts::rBits)));
 	for (size_t i = 0; i < 65536; i++)
 		fMean[i] = 0;
 	fMean[1] = -1.0 * pMean[1] / (pMean[0] * (log(pMean[0]) - nts::rBits * log(2)));

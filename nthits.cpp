@@ -1,4 +1,5 @@
 #include <argparse/argparse.hpp>
+#include <btllib/nthash.hpp>
 #include <cmath>
 #include <iomanip>
 #include <iostream>
@@ -8,7 +9,6 @@
 #include "BloomFilter.hpp"
 #include "CBFilter.hpp"
 #include "ntcard.hpp"
-#include "vendor/ntHash/ntHashIterator.hpp"
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -36,9 +36,9 @@ string prefix;
 size_t F0;
 size_t f1;
 size_t fr;
-bool outbloom = 0;
-bool solid = 0;
-bool eval = 0;
+bool outbloom = false;
+bool solid = false;
+bool eval = false;
 } // namespace opt
 
 static const unsigned char b2r[256] = { 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', // 0
@@ -149,20 +149,19 @@ fqHit(std::ifstream& in, omp_lock_t* locks, BloomFilter& mydBF, CBFilter& mycBF,
 			good2 = static_cast<bool>(getline(in, hseq));
 		}
 		if (good) {
-			ntHashIterator itr(rSeqs, opt::h + 1, opt::k);
-			while (itr != itr.end()) {
-				if (!mydBF.insert_make_change(*itr)) {
-					string canonKmer = rSeqs.substr(itr.pos(), opt::k);
+			btllib::NtHash nth(rSeqs, opt::h + 1, opt::k);
+			while (nth.roll()) {
+				if (!mydBF.insert_make_change(nth.hashes())) {
+					string canonKmer = rSeqs.substr(nth.get_pos(), opt::k);
 					getCanon(canonKmer);
 					if (opt::hitCap > 1) {
-						if (mycBF.insert_and_test(*itr)) {
-							hitSearchInsert((*itr)[0], canonKmer, locks, hitTable);
+						if (mycBF.insert_and_test(nth.hashes())) {
+							hitSearchInsert(nth.hashes()[0], canonKmer, locks, hitTable);
 						}
 					} else {
-						hitSearchInsert((*itr)[0], canonKmer, locks, hitTable);
+						hitSearchInsert(nth.hashes()[0], canonKmer, locks, hitTable);
 					}
 				}
-				++itr;
 			}
 		}
 	}
@@ -183,15 +182,14 @@ faHit(std::ifstream& in, omp_lock_t* locks, BloomFilter& mydBF, CBFilter& mycBF,
 				good = static_cast<bool>(getline(in, seq));
 			}
 		}
-		ntHashIterator itr(rSeqs, opt::h, opt::k);
-		while (itr != itr.end()) {
-			if (!mydBF.insert_make_change(*itr))
-				if (mycBF.insert_and_test(*itr)) {
-					string canonKmer = rSeqs.substr(itr.pos(), opt::k);
+		btllib::NtHash nth(rSeqs, opt::h, opt::k);
+		while (nth.roll()) {
+			if (!mydBF.insert_make_change(nth.hashes()))
+				if (mycBF.insert_and_test(nth.hashes())) {
+					string canonKmer = rSeqs.substr(nth.get_pos(), opt::k);
 					getCanon(canonKmer);
-					hitSearchInsert((*itr)[0], canonKmer, locks, hitTable);
+					hitSearchInsert(nth.hashes()[0], canonKmer, locks, hitTable);
 				}
-			++itr;
 		}
 	}
 }
@@ -210,17 +208,16 @@ bfqHit(std::ifstream& in, BloomFilter& mydBF, CBFilter& mycBF, BloomFilter& myhB
 			good2 = static_cast<bool>(getline(in, hseq));
 		}
 		if (good) {
-			ntHashIterator itr(rSeqs, opt::h + 1, opt::k);
-			while (itr != itr.end()) {
-				if (!mydBF.insert_make_change(*itr)) {
+			btllib::NtHash nth(rSeqs, opt::h + 1, opt::k);
+			while (nth.roll()) {
+				if (!mydBF.insert_make_change(nth.hashes())) {
 					if (opt::hitCap > 1) {
-						if (mycBF.insert_and_test(*itr))
-							myhBF.insert(*itr);
+						if (mycBF.insert_and_test(nth.hashes()))
+							myhBF.insert(nth.hashes());
 					} else {
-						myhBF.insert(*itr);
+						myhBF.insert(nth.hashes());
 					}
 				}
-				++itr;
 			}
 		}
 	}
@@ -241,17 +238,16 @@ bfaHit(std::ifstream& in, BloomFilter& mydBF, CBFilter& mycBF, BloomFilter& myhB
 				good = static_cast<bool>(getline(in, seq));
 			}
 		}
-		ntHashIterator itr(rSeqs, opt::h + 1, opt::k);
-		while (itr != itr.end()) {
-			if (!mydBF.insert_make_change(*itr)) {
+		btllib::NtHash nth(rSeqs, opt::h + 1, opt::k);
+		while (nth.roll()) {
+			if (!mydBF.insert_make_change(nth.hashes())) {
 				if (opt::hitCap > 1) {
-					if (mycBF.insert_and_test(*itr))
-						myhBF.insert(*itr);
+					if (mycBF.insert_and_test(nth.hashes()))
+						myhBF.insert(nth.hashes());
 				} else {
-					myhBF.insert(*itr);
+					myhBF.insert(nth.hashes());
 				}
 			}
-			++itr;
 		}
 	}
 }
@@ -487,43 +483,43 @@ main(int argc, char** argv)
 				outFile << hitTable[i].kmer << "\t" << hitTable[i].count + opt::hitCap << "\n";
 		outFile.close();
 
-		// if(opt::eval) {
-		std::ofstream dOut("diff_2");
-		std::ifstream dskRes("out_ge22.txt");
-		std::string dskLine;
-		while (getline(dskRes, dskLine)) {
-			std::string dsk_kmer;
-			unsigned dsk_count = 0;
-			std::istringstream dskstm(dskLine);
-			dskstm >> dsk_kmer >> dsk_count;
-			// cerr << dsk_kmer << "\t" << dsk_count << "\n";
-			// if (dsk_count >= opt::hitCap) {
-			uint64_t dsk_hash = NTC64(dsk_kmer.c_str(), opt::k);
-			unsigned nthits_count = hitSearch(dsk_hash, dsk_kmer, hitTable);
-			if (nthits_count != 0) {
-				std::cout << dsk_kmer << "\t" << dsk_count << "\t" << nthits_count + opt::hitCap
-				          << "\n";
-			} else {
-				std::string dsk_can(dsk_kmer);
-				getCanon(dsk_can);
-				if (dsk_can != dsk_kmer) {
-					uint64_t dsk_hash = NTC64(dsk_can.c_str(), opt::k);
-					unsigned nthits_count = hitSearch(dsk_hash, dsk_can, hitTable);
-					if (nthits_count != 0) {
-						std::cout << dsk_can << "\t" << dsk_count << "\t"
-						          << nthits_count + opt::hitCap << "\n";
-					}
-				} else
-					dOut << dsk_kmer << "\t" << dsk_count << "\t"
-					     << "0"
-					     << "\n";
+		if (opt::eval) {
+			std::ofstream dOut("diff_2");
+			std::ifstream dskRes("out_ge22.txt");
+			std::string dskLine;
+			while (getline(dskRes, dskLine)) {
+				std::string dsk_kmer;
+				unsigned dsk_count = 0;
+				std::istringstream dskstm(dskLine);
+				dskstm >> dsk_kmer >> dsk_count;
+				// cerr << dsk_kmer << "\t" << dsk_count << "\n";
+				// if (dsk_count >= opt::hitCap) {
+				uint64_t dsk_hash = btllib::ntc64(dsk_kmer.c_str(), opt::k);
+				unsigned nthits_count = hitSearch(dsk_hash, dsk_kmer, hitTable);
+				if (nthits_count != 0) {
+					std::cout << dsk_kmer << "\t" << dsk_count << "\t" << nthits_count + opt::hitCap
+					          << "\n";
+				} else {
+					std::string dsk_can(dsk_kmer);
+					getCanon(dsk_can);
+					if (dsk_can != dsk_kmer) {
+						uint64_t dsk_hash = btllib::ntc64(dsk_can.c_str(), opt::k);
+						unsigned nthits_count = hitSearch(dsk_hash, dsk_can, hitTable);
+						if (nthits_count != 0) {
+							std::cout << dsk_can << "\t" << dsk_count << "\t"
+							          << nthits_count + opt::hitCap << "\n";
+						}
+					} else
+						dOut << dsk_kmer << "\t" << dsk_count << "\t"
+						     << "0"
+						     << "\n";
+				}
+				//}
 			}
-			//}
-		}
 
-		dskRes.close();
-		dOut.close();
-		//}
+			dskRes.close();
+			dOut.close();
+		}
 
 		delete[] hitTable;
 	}

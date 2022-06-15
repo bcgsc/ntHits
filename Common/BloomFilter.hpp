@@ -13,7 +13,7 @@
 #include "iostream"
 #include "fstream"
 #include <cstring>
-#include "vendor/ntHash/nthash.hpp"
+#include <btllib/nthash_lowlevel.hpp>
 
 using namespace std;
 
@@ -26,7 +26,7 @@ inline unsigned popCnt(unsigned char x) {
 
 class BloomFilter {
 public:
-    
+
 #pragma pack(push)
 #pragma pack(1) //to maintain consistent values across platforms
     struct FileHeader {
@@ -49,7 +49,7 @@ public:
         m_size = header.size;
         m_hashNum = header.nhash;
         m_kmerSize = header.kmer;
-        
+
         char magic[9];
         memcpy(magic, header.magic, 8);
         magic[8] = '\0';
@@ -60,7 +60,7 @@ public:
         myFile.read((char *)m_filter, (m_size + 7)/8);
         myFile.close();
     }
-    
+
     BloomFilter(size_t filterSize, unsigned hashNum, unsigned kmerSize):
         m_size(filterSize), m_hashNum(hashNum), m_kmerSize(kmerSize) {
         m_filter = new unsigned char [(m_size + 7)/8]();
@@ -84,18 +84,22 @@ public:
     }
 
     void insert(const char* kmer) {
-	uint64_t hVal = NTC64(kmer, m_kmerSize);
+		uint64_t hVal = btllib::ntc64(kmer, m_kmerSize);
+		uint64_t* mhVals = new uint64_t[m_hashNum];
+		btllib::nte64(hVal, m_kmerSize, m_hashNum, mhVals);
         for (unsigned i = 0; i < m_hashNum; i++) {
-	    uint64_t mhVal=NTE64(hVal, m_kmerSize, i);
+			uint64_t mhVal = mhVals[i];
             size_t hLoc = mhVal % m_size;
             __sync_or_and_fetch(&m_filter[hLoc / 8], (1 << (7 - hLoc % 8)));
         }
     }
 
     bool contains(const char* kmer) const {
-        uint64_t hVal = NTC64(kmer, m_kmerSize);
+		uint64_t hVal = btllib::ntc64(kmer, m_kmerSize);
+		uint64_t* mhVals = new uint64_t[m_hashNum];
+		btllib::nte64(hVal, m_kmerSize, m_hashNum, mhVals);
         for (unsigned i = 0; i < m_hashNum; i++) {
-            uint64_t mhVal=NTE64(hVal, m_kmerSize, i);
+			uint64_t mhVal = mhVals[i];
             size_t hLoc = mhVal % m_size;
             if ((m_filter[hLoc / 8] & (1 << (7 - hLoc % 8))) == 0)
                 return false;
@@ -114,8 +118,8 @@ public:
         header.dFPR = pow(getPop()*1.0/m_size, m_hashNum);
         header.nEntry = 0;
         header.tEntry = 0;
-        
-        
+
+
         ofstream myFile(fPath, ios::out | ios::binary);
         myFile.write(reinterpret_cast<char*>(&header), sizeof(struct FileHeader));
         myFile.write(reinterpret_cast<char*>(m_filter), (m_size + 7)/8);
@@ -129,11 +133,11 @@ public:
             popBF = popBF + popCnt(m_filter[i]);
         return popBF;
     }
-	
+
     size_t getSize() const {
         return m_size;
     }
-     
+
     ~BloomFilter() {
         delete[] m_filter;
     }

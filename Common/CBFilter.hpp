@@ -20,7 +20,7 @@
 #include <cstdlib>
 #include <stdio.h>
 #include <cstring>
-#include "vendor/ntHash/nthash.hpp"
+#include <btllib/nthash_lowlevel.hpp>
 
 using namespace std;
 
