@@ -9,7 +9,7 @@
 #ifndef NTCARD_H_
 #define NTCARD_H_
 
-#include <btllib/nthash.hpp>
+#include "btllib/nthash.hpp"
 #include <cassert>
 #include <cmath>
 #include <cstdlib>
