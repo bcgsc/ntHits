@@ -10,10 +10,13 @@ if (OPENMP_FOUND)
 endif ()
 
 include_directories(.)
+include_directories(include)
 include_directories(vendor/argparse/include)
-include_directories("vendor/btllib/include"
-        "vendor/btllib/subprojects/cpptoml/include"
-        "vendor/btllib/subprojects/sdsl-lite/include")
+include_directories(vendor/btllib/include)
+include_directories(vendor/btllib/subprojects/cpptoml/include)
+include_directories(vendor/btllib/subprojects/sdsl-lite/include)
+
+file(GLOB SRC_FILES ${PROJECT_SOURCE_DIR}/src/*.cpp)
 
 add_custom_command(
         OUTPUT ${PROJECT_BINARY_DIR}/btllib/lib/libbtllib.a

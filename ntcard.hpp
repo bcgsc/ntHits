@@ -24,8 +24,6 @@
 #include <omp.h>
 #endif
 
-using namespace std;
-
 namespace nts {
 unsigned nThrd = 1;
 unsigned kmLen = 64;
@@ -89,7 +87,7 @@ ntComp(const uint64_t hVal, uint16_t* t_Counter)
 }
 
 inline void
-ntRead(const string& seq, uint16_t* t_Counter, size_t& totKmer)
+ntRead(const std::string& seq, uint16_t* t_Counter, size_t& totKmer)
 {
 	btllib::NtHash nth(seq, 1, nts::kmLen);
 	while (nth.roll()) {
@@ -102,7 +100,7 @@ void
 getEfq(std::ifstream& in, uint16_t* t_Counter, size_t& totKmer)
 {
 	bool good = true;
-	for (string seq, hseq; good;) {
+	for (std::string seq, hseq; good;) {
 		good = static_cast<bool>(getline(in, seq));
 		good = static_cast<bool>(getline(in, hseq));
 		good = static_cast<bool>(getline(in, hseq));
@@ -116,8 +114,8 @@ void
 getEfa(std::ifstream& in, uint16_t* t_Counter, size_t& totKmer)
 {
 	bool good = true;
-	for (string seq, hseq; good;) {
-		string line;
+	for (std::string seq, hseq; good;) {
+		std::string line;
 		good = static_cast<bool>(getline(in, seq));
 		while (good && seq[0] != '>') {
 			line += seq;
@@ -183,7 +181,11 @@ compEst(const uint16_t* t_Counter, double& F0Mean, double fMean[])
 }
 
 void
-getHist(const vector<string>& inFiles, const unsigned kLen, const unsigned nThr, size_t histArray[])
+getHist(
+    const std::vector<std::string>& inFiles,
+    const unsigned kLen,
+    const unsigned nThr,
+    size_t histArray[])
 {
 
 	double sTime = omp_get_wtime();
@@ -236,7 +238,7 @@ getHist(const vector<string>& inFiles, const unsigned kLen, const unsigned nThr,
 	for (size_t i = 2; i <= nts::covMax + 1; i++)
 		histArray[i] = (size_t)fMean[i - 1];
 	delete[] t_Counter;
-	std::cerr << "Reapeat profile estimated using ntCard in (sec): " << setprecision(4) << fixed
-	          << omp_get_wtime() - sTime << "\n";
+	std::cerr << "Reapeat profile estimated using ntCard in (sec): " << std::setprecision(4)
+	          << std::fixed << omp_get_wtime() - sTime << "\n";
 }
 #endif /* NTCARD_H_ */
