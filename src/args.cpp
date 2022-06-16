@@ -1,6 +1,7 @@
 #include "args.hpp"
 
 #include <argparse/argparse.hpp>
+#include <sstream>
 
 void
 ProgramArguments::parse(int argc, char** argv)
@@ -33,6 +34,9 @@ ProgramArguments::parse(int argc, char** argv)
 	parser.add_argument("-p", "--prefix")
 	    .help("Output files' prefix")
 	    .default_value(std::string("repeat"));
+
+	parser.add_argument("-s", "--seeds")
+	    .help("If specified, use given spaced seeds separated by commas (e.g. 10101,11011)");
 
 	parser.add_argument("--outbloom")
 	    .help("Output the most frequent k-mers in a Bloom filter")
@@ -89,6 +93,14 @@ ProgramArguments::parse(int argc, char** argv)
 	if (parser.is_used("-f")) {
 		f1 = parser.get<unsigned>("-f");
 		_use_ntcard = false;
+	}
+
+	if (parser.is_used("-s")) {
+		std::istringstream ss(parser.get("-s"));
+		std::string seed;
+		while (std::getline(ss, seed, ',')) {
+			seeds.push_back(seed);
+		}
 	}
 
 	try {

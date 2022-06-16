@@ -86,18 +86,35 @@ ntComp(const uint64_t hVal, uint16_t* t_Counter)
 	}
 }
 
+#define NT_READ(NTHASH)                                                                            \
+	NTHASH                                                                                         \
+	while (nth.roll()) {                                                                           \
+		ntComp(nth.hashes()[0], t_Counter);                                                        \
+		++totKmer;                                                                                 \
+	}
+
 inline void
 ntRead(const std::string& seq, uint16_t* t_Counter, size_t& totKmer)
 {
-	btllib::NtHash nth(seq, 1, nts::kmLen);
-	while (nth.roll()) {
-		ntComp(nth.hashes()[0], t_Counter);
-		++totKmer;
-	}
+	NT_READ(btllib::NtHash nth(seq, 1, nts::kmLen);)
+}
+
+inline void
+ntReadSeeds(
+    const std::string& seq,
+    const std::vector<std::string>& seeds,
+    uint16_t* t_Counter,
+    size_t& totKmer)
+{
+	NT_READ(btllib::SeedNtHash nth(seq, seeds, 1, nts::kmLen);)
 }
 
 void
-getEfq(std::ifstream& in, uint16_t* t_Counter, size_t& totKmer)
+getEfq(
+    std::ifstream& in,
+    const std::vector<std::string>& seeds,
+    uint16_t* t_Counter,
+    size_t& totKmer)
 {
 	bool good = true;
 	for (std::string seq, hseq; good;) {
@@ -105,13 +122,21 @@ getEfq(std::ifstream& in, uint16_t* t_Counter, size_t& totKmer)
 		good = static_cast<bool>(getline(in, hseq));
 		good = static_cast<bool>(getline(in, hseq));
 		if (good)
-			ntRead(seq, t_Counter, totKmer);
+			if (seeds.empty()) {
+				ntRead(seq, t_Counter, totKmer);
+			} else {
+				ntReadSeeds(seq, seeds, t_Counter, totKmer);
+			}
 		good = static_cast<bool>(getline(in, hseq));
 	}
 }
 
 void
-getEfa(std::ifstream& in, uint16_t* t_Counter, size_t& totKmer)
+getEfa(
+    std::ifstream& in,
+    const std::vector<std::string>& seeds,
+    uint16_t* t_Counter,
+    size_t& totKmer)
 {
 	bool good = true;
 	for (std::string seq, hseq; good;) {
@@ -121,12 +146,21 @@ getEfa(std::ifstream& in, uint16_t* t_Counter, size_t& totKmer)
 			line += seq;
 			good = static_cast<bool>(getline(in, seq));
 		}
-		ntRead(line, t_Counter, totKmer);
+		if (seeds.empty()) {
+			ntRead(line, t_Counter, totKmer);
+		} else {
+			ntReadSeeds(line, seeds, t_Counter, totKmer);
+		}
 	}
 }
 
 void
-getEsm(std::ifstream& in, const std::string& samSeq, uint16_t* t_Counter, size_t& totKmer)
+getEsm(
+    std::ifstream& in,
+    const std::vector<std::string>& seeds,
+    const std::string& samSeq,
+    uint16_t* t_Counter,
+    size_t& totKmer)
 {
 	std::string samLine, seq;
 	std::string s1, s2, s3, s4, s5, s6, s7, s8, s9, s11;
@@ -139,7 +173,11 @@ getEsm(std::ifstream& in, const std::string& samSeq, uint16_t* t_Counter, size_t
 	do {
 		std::istringstream iss(samLine);
 		iss >> s1 >> s2 >> s3 >> s4 >> s5 >> s6 >> s7 >> s8 >> s9 >> seq >> s11;
-		ntRead(seq, t_Counter, totKmer);
+		if (seeds.empty()) {
+			ntRead(seq, t_Counter, totKmer);
+		} else {
+			ntReadSeeds(seq, seeds, t_Counter, totKmer);
+		}
 	} while (getline(in, samLine));
 }
 
@@ -183,6 +221,7 @@ compEst(const uint16_t* t_Counter, double& F0Mean, double fMean[])
 void
 getHist(
     const std::vector<std::string>& inFiles,
+    const std::vector<std::string>& seeds,
     const unsigned kLen,
     const unsigned nThr,
     size_t histArray[])
@@ -216,11 +255,11 @@ getHist(
 		std::string samSeq;
 		unsigned ftype = getftype(in, samSeq);
 		if (ftype == 0)
-			getEfq(in, t_Counter, totKmer);
+			getEfq(in, seeds, t_Counter, totKmer);
 		else if (ftype == 1)
-			getEfa(in, t_Counter, totKmer);
+			getEfa(in, seeds, t_Counter, totKmer);
 		else if (ftype == 2)
-			getEsm(in, samSeq, t_Counter, totKmer);
+			getEsm(in, seeds, samSeq, t_Counter, totKmer);
 		else {
 			std::cerr << "Error in reading file: " << inFiles[file_i] << std::endl;
 			exit(EXIT_FAILURE);

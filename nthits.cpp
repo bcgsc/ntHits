@@ -67,6 +67,34 @@ hit_search(const uint64_t hash_value, const std::string& kmer, entry* table, siz
 	return 0;
 }
 
+#define F_HIT(NTHASH)                                                                              \
+	unsigned seq_reader_mode;                                                                      \
+	if (args.long_mode()) {                                                                        \
+		seq_reader_mode = btllib::SeqReader::Flag::LONG_MODE;                                      \
+	} else {                                                                                       \
+		seq_reader_mode = btllib::SeqReader::Flag::SHORT_MODE;                                     \
+	}                                                                                              \
+	btllib::SeqReader reader(file_path, seq_reader_mode);                                          \
+	_Pragma("omp parallel shared(reader)") for (const auto& record : reader)                       \
+	{                                                                                              \
+		NTHASH                                                                                     \
+		while (nth.roll()) {                                                                       \
+			if (!distincts.contains_insert(nth.hashes())) {                                        \
+				std::string canonKmer = record.seq.substr(nth.get_pos(), args.get_kmer_length());  \
+				getCanon(canonKmer);                                                               \
+				if (args.get_hit_cap() > 1) {                                                      \
+					if (cbf.insert_thresh_contains(nth.hashes(), args.get_hit_cap() - 1)) {        \
+						hit_search_insert(                                                         \
+						    nth.hashes()[0], canonKmer, locks, table, args.get_hit_size());        \
+					}                                                                              \
+				} else {                                                                           \
+					hit_search_insert(                                                             \
+					    nth.hashes()[0], canonKmer, locks, table, args.get_hit_size());            \
+				}                                                                                  \
+			}                                                                                      \
+		}                                                                                          \
+	}
+
 void
 f_hit(
     const std::string& file_path,
@@ -76,33 +104,45 @@ f_hit(
     entry* table,
     ProgramArguments& args)
 {
-	unsigned seq_reader_mode;
-	if (args.long_mode()) {
-		seq_reader_mode = btllib::SeqReader::Flag::LONG_MODE;
-	} else {
-		seq_reader_mode = btllib::SeqReader::Flag::SHORT_MODE;
-	}
-	btllib::SeqReader reader(file_path, seq_reader_mode);
-#pragma omp parallel shared(reader)
-	for (const auto& record : reader) {
-		btllib::NtHash nth(record.seq, args.get_num_hashes() + 1, args.get_kmer_length());
-		while (nth.roll()) {
-			if (!distincts.contains_insert(nth.hashes())) {
-				std::string canonKmer = record.seq.substr(nth.get_pos(), args.get_kmer_length());
-				getCanon(canonKmer);
-				if (args.get_hit_cap() > 1) {
-					if (cbf.insert_thresh_contains(nth.hashes(), args.get_hit_cap() - 1)) {
-						hit_search_insert(
-						    nth.hashes()[0], canonKmer, locks, table, args.get_hit_size());
-					}
-				} else {
-					hit_search_insert(
-					    nth.hashes()[0], canonKmer, locks, table, args.get_hit_size());
-				}
-			}
-		}
-	}
+	F_HIT(btllib::NtHash nth(record.seq, args.get_num_hashes() + 1, args.get_kmer_length());)
 }
+
+void
+f_hit_seeds(
+    const std::string& file_path,
+    const std::vector<std::string>& seeds,
+    omp_lock_t* locks,
+    btllib::KmerBloomFilter& distincts,
+    btllib::CountingBloomFilter<cbf_counter_t>& cbf,
+    entry* table,
+    ProgramArguments& args)
+{
+	F_HIT(btllib::SeedNtHash nth(
+	          record.seq, seeds, args.get_num_hashes() + 1, args.get_kmer_length());)
+}
+
+#define B_HIT(NTHASH)                                                                              \
+	unsigned seq_reader_mode;                                                                      \
+	if (ProgramArguments::get_instance().long_mode()) {                                            \
+		seq_reader_mode = btllib::SeqReader::Flag::LONG_MODE;                                      \
+	} else {                                                                                       \
+		seq_reader_mode = btllib::SeqReader::Flag::SHORT_MODE;                                     \
+	}                                                                                              \
+	btllib::SeqReader reader(file_path, seq_reader_mode);                                          \
+	_Pragma("omp parallel shared(reader)") for (const auto record : reader)                        \
+	{                                                                                              \
+		NTHASH while (nth.roll())                                                                  \
+		{                                                                                          \
+			if (mydBF.contains_insert(nth.hashes())) {                                             \
+				if (args.get_hit_cap() > 1) {                                                      \
+					if (mycBF.insert_thresh_contains(nth.hashes(), args.get_hit_cap() - 1))        \
+						myhBF.insert(nth.hashes());                                                \
+				} else {                                                                           \
+					myhBF.insert(nth.hashes());                                                    \
+				}                                                                                  \
+			}                                                                                      \
+		}                                                                                          \
+	}
 
 void
 b_hit(
@@ -112,27 +152,20 @@ b_hit(
     btllib::KmerBloomFilter& myhBF,
     ProgramArguments& args)
 {
-	unsigned seq_reader_mode;
-	if (ProgramArguments::get_instance().long_mode()) {
-		seq_reader_mode = btllib::SeqReader::Flag::LONG_MODE;
-	} else {
-		seq_reader_mode = btllib::SeqReader::Flag::SHORT_MODE;
-	}
-	btllib::SeqReader reader(file_path, seq_reader_mode);
-#pragma omp parallel shared(reader)
-	for (const auto record : reader) {
-		btllib::NtHash nth(record.seq, args.get_num_hashes() + 1, args.get_kmer_length());
-		while (nth.roll()) {
-			if (mydBF.contains_insert(nth.hashes())) {
-				if (args.get_hit_cap() > 1) {
-					if (mycBF.insert_thresh_contains(nth.hashes(), args.get_hit_cap() - 1))
-						myhBF.insert(nth.hashes());
-				} else {
-					myhBF.insert(nth.hashes());
-				}
-			}
-		}
-	}
+	B_HIT(btllib::NtHash nth(record.seq, args.get_num_hashes() + 1, args.get_kmer_length());)
+}
+
+void
+b_hit_seeds(
+    const std::string& file_path,
+    const std::vector<std::string>& seeds,
+    btllib::KmerBloomFilter& mydBF,
+    btllib::CountingBloomFilter<cbf_counter_t>& mycBF,
+    btllib::KmerBloomFilter& myhBF,
+    ProgramArguments& args)
+{
+	B_HIT(btllib::SeedNtHash nth(
+	          record.seq, seeds, args.get_num_hashes() + 1, args.get_kmer_length());)
 }
 
 int
@@ -145,7 +178,12 @@ main(int argc, char** argv)
 
 	if (args.use_ntcard()) {
 		size_t histArray[10002];
-		getHist(args.get_input_files(), args.get_kmer_length(), args.get_num_threads(), histArray);
+		getHist(
+		    args.get_input_files(),
+		    args.get_seeds(),
+		    args.get_kmer_length(),
+		    args.get_num_threads(),
+		    histArray);
 
 		int histIndex = 2, errCov = 1;
 		while (histIndex <= 10000 && histArray[histIndex] > histArray[histIndex + 1])
@@ -209,7 +247,11 @@ main(int argc, char** argv)
 		btllib::KmerBloomFilter myhBF(
 		    args.get_hit_size() / 8, args.get_num_hashes() + 1, args.get_kmer_length());
 		for (const auto& file_path : args.get_input_files()) {
-			b_hit(file_path, mydBF, mycBF, myhBF, args);
+			if (args.get_seeds().empty()) {
+				b_hit(file_path, mydBF, mycBF, myhBF, args);
+			} else {
+				b_hit_seeds(file_path, args.get_seeds(), mydBF, mycBF, myhBF, args);
+			}
 		}
 		std::string hbf_out_path;
 		if (args.get_prefix().empty() && args.solid()) {
@@ -232,7 +274,11 @@ main(int argc, char** argv)
 			omp_init_lock(&locks[i]);
 
 		for (const auto& file_path : args.get_input_files()) {
-			f_hit(file_path, locks, mydBF, mycBF, hitTable, args);
+			if (args.get_seeds().empty()) {
+				f_hit(file_path, locks, mydBF, mycBF, hitTable, args);
+			} else {
+				f_hit_seeds(file_path, args.get_seeds(), locks, mydBF, mycBF, hitTable, args);
+			}
 		}
 
 		for (unsigned i = 0; i < lockSize; i++)

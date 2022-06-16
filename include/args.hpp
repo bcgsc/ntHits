@@ -29,6 +29,7 @@ class ProgramArguments
 	bool _long_mode;
 	bool _use_ntcard;
 	std::vector<std::string> input_files;
+	std::vector<std::string> seeds;
 
 	ProgramArguments() = default;
 
@@ -60,6 +61,7 @@ class ProgramArguments
 	[[nodiscard]] bool long_mode() { return _long_mode; }
 	[[nodiscard]] bool use_ntcard() { return _use_ntcard; }
 	[[nodiscard]] std::vector<std::string> get_input_files() { return input_files; }
+	[[nodiscard]] std::vector<std::string> get_seeds() { return seeds; }
 
 	void set_hit_cap(const unsigned x) { hit_cap = x; }
 	void set_dbf_size(const unsigned x) { dbf_size = x; }
