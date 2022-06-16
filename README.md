@@ -1,81 +1,51 @@
-ntHits 
-=
+# ntHits
+
 ntHits is a method for identifying repeats in high-throughput DNA sequencing data. 
 
-Compiling ntHits from GitHub
-===========================
+# Installation
 
-When installing ntHits from GitHub source the following tools are
-required:
+Requirements:
 
-* [Autoconf](http://www.gnu.org/software/autoconf)
-* [Automake](http://www.gnu.org/software/automake)
+- [cmake](https://cmake.org/) version 3.22 or higher.
+- C++ compiler with c++17 support.
 
-To generate the configure script and make files:
+To build ntHits, download the latest release and run the following command in the project's root directory to create a buildsystem in the `release` folder:
 
-	./autogen.sh
- 
-Compiling ntHits from source
-===========================
-To compile and install ntHits in /usr/local:
-
-```
-$ ./configure
-$ make 
-$ sudo make install 
+```shell
+cmake -S . -B release
 ```
 
-To install ntHits in a specified directory:
+Then, compile ntHits and its depedencies ([btllib](https://github.com/bcgsc/btllib) and [argparse](https://github.com/p-ranav/argparse)) using:
 
-```
-$ ./configure --prefix=/opt/ntHits
-$ make 
-$ make install 
+```shell
+cmake --build release --target all
 ```
 
-ntHits uses OpenMP for parallelization, which requires a modern compiler such as GCC 4.2 or greater. If you have an older compiler, it is best to upgrade your compiler if possible. If you have multiple versions of GCC installed, you can specify a different compiler:
+This will generate an executable binary `ntHits` in the `release` folder.
+
+# Usage
 
 ```
-$ ./configure CC=gcc-xx CXX=g++-xx 
-```
+Usage: ntHits [options] files 
 
-For the best performance of ntHits, pass `-O3` flag:  
+Reports the most frequent k-mers in input files.
 
-```
-$ ./configure CFLAGS='-g -O3' CXXFLAGS='-g -O3' 
-```
+Positional arguments:
+files           Input files [required]
 
-
-To run ntHits, its executables should be found in your PATH. If you installed ntHits in /opt/ntHits, add /opt/ntHits/bin to your PATH:
-
-```
-$ PATH=/opt/ntHits/bin:$PATH
-```
-
-Run ntHits
-==========
-```
-nthits [OPTIONS] ... [FILE]
-```
-Parameters:
-  * `-k`,  `--kmer=SIZE`: the length of *k*-mer `[64]`
-  * `-t`,  `--threads=N`: use N parallel threads `[16]`
-  * `-c`,  `--cutoff=N`: the maximum coverage of *k*-mer in output 
-  * `-p`,  `--pref=STRING`: the prefix for output file name `[repeat]`
-  * `--outbloom`, output the most frequet k-mers in a Bloom filter
-  * `--solid`,  output the solid k-mers (non-errornous k-mers)
-  * `FILE`: input file or set of files seperated by space, in fasta, fastq, sam, and bam formats. The files can also be in compressed (`.gz`, `.bz2`, `.xz`) formats . A list of files containing file names in each row can be passed with `@` prefix.
-  
-For example to run nthits on a test file `reads.fastq` with `k=50`:
-```
-$ nthits -k50 reads.fastq 
-```
-As another example, to run nthits on `5` input files file_1.fq.gz, file_2.fa, file_3.sam, file_4.bam, file_5.fq with `k=64` and 32 threads and repeat regions with frequency `>100``:
-```
-$ nthits -k64 -c100 -j64 file_1.fq.gz file_2.fa file_3.sam file_4.bam file_5.fq
-```
-
-If we have a list of input files `lib.in` with input file names in each row and want to run ntHits with `k=144` and 12 threads:
-```
-$ nthits -k144 -j12 @lib.in 
+Optional arguments:
+-t --threads    Number of parallel threads [default: 16]
+-k --kmer       k-mer length [default: 64]
+-h --hashes     Number of hashes to generate per k-mer/spaced seed [default: 4]
+-c --cutoff     k-mer cutoff threshold [required]
+-p --prefix     Output files' prefix [default: "repeat"]
+-s --seeds      If specified, use given spaced seeds separated by commas (e.g. 10101,11011)
+--outbloom      Output the most frequent k-mers in a Bloom filter [default: false]
+--solid         Output the solid k-mers (non-erroneous k-mers) [default: false]
+--long-mode     Optimize data reader for long sequences (>5kbp) [default: false]
+-b --bit        [default: 16]
+-F              
+-f              
+-r              
+Copyright 2019 Canada's Michael Smith Genome Science Centre
 ```
