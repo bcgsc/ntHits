@@ -2,6 +2,7 @@
 #include <btllib/bloom_filter.hpp>
 #include <btllib/counting_bloom_filter.hpp>
 #include <btllib/nthash.hpp>
+#include <btllib/seq_reader.hpp>
 #include <cmath>
 #include <iomanip>
 #include <iostream>
@@ -40,6 +41,7 @@ size_t fr;
 bool outbloom = false;
 bool solid = false;
 bool eval = false;
+unsigned seq_reader_mode;
 } // namespace opt
 
 static const unsigned char b2r[256] = { 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', // 0
@@ -137,131 +139,48 @@ hitSearch(const uint64_t kint, const string& kmer, entry* T)
 }
 
 void
-fqHit(
-    std::ifstream& in,
+f_hit(
+    const std::string& file_path,
     omp_lock_t* locks,
     btllib::KmerBloomFilter& mydBF,
     btllib::CountingBloomFilter<cbf_counter_t>& mycBF,
     entry* hitTable)
 {
-	bool good, good2 = true;
-#pragma omp parallel
-	for (string rSeqs, hseq; good2;) {
-#pragma omp critical(in)
-		{
-			good = static_cast<bool>(getline(in, rSeqs));
-			good = static_cast<bool>(getline(in, hseq));
-			good = static_cast<bool>(getline(in, hseq));
-			good2 = static_cast<bool>(getline(in, hseq));
-		}
-		if (good) {
-			btllib::NtHash nth(rSeqs, opt::h + 1, opt::k);
-			while (nth.roll()) {
-				if (!mydBF.contains_insert(nth.hashes())) {
-					string canonKmer = rSeqs.substr(nth.get_pos(), opt::k);
-					getCanon(canonKmer);
-					if (opt::hitCap > 1) {
-						if (mycBF.insert_contains(nth.hashes())) {
-							hitSearchInsert(nth.hashes()[0], canonKmer, locks, hitTable);
-						}
-					} else {
-						hitSearchInsert(nth.hashes()[0], canonKmer, locks, hitTable);
-					}
-				}
-			}
-		}
-	}
-}
-
-void
-faHit(
-    std::ifstream& in,
-    omp_lock_t* locks,
-    btllib::KmerBloomFilter& mydBF,
-    btllib::CountingBloomFilter<cbf_counter_t>& cbf,
-    entry* hitTable)
-{
-	bool good = true;
-#pragma omp parallel
-	for (string seq, hseq; good;) {
-		string rSeqs;
-#pragma omp critical(in)
-		{
-			good = static_cast<bool>(getline(in, seq));
-			while (good && seq[0] != '>') {
-				rSeqs += seq;
-				good = static_cast<bool>(getline(in, seq));
-			}
-		}
-		btllib::NtHash nth(rSeqs, opt::h, opt::k);
-		while (nth.roll()) {
-			if (!mydBF.contains_insert(nth.hashes()))
-				if (cbf.insert_thresh_contains(nth.hashes(), opt::hitCap - 1)) {
-					string canonKmer = rSeqs.substr(nth.get_pos(), opt::k);
-					getCanon(canonKmer);
-					hitSearchInsert(nth.hashes()[0], canonKmer, locks, hitTable);
-				}
-		}
-	}
-}
-
-void
-bfqHit(
-    std::ifstream& in,
-    btllib::KmerBloomFilter& mydBF,
-    btllib::CountingBloomFilter<cbf_counter_t>& cbf,
-    btllib::KmerBloomFilter& myhBF)
-{
-	bool good, good2 = true;
-#pragma omp parallel
-	for (string rSeqs, hseq; good2;) {
-#pragma omp critical(in)
-		{
-			good = static_cast<bool>(getline(in, rSeqs));
-			good = static_cast<bool>(getline(in, hseq));
-			good = static_cast<bool>(getline(in, hseq));
-			good2 = static_cast<bool>(getline(in, hseq));
-		}
-		if (good) {
-			btllib::NtHash nth(rSeqs, opt::h + 1, opt::k);
-			while (nth.roll()) {
-				if (!mydBF.contains_insert(nth.hashes())) {
-					if (opt::hitCap > 1) {
-						if (cbf.insert_thresh_contains(nth.hashes(), opt::hitCap - 1))
-							myhBF.insert(nth.hashes());
-					} else {
-						myhBF.insert(nth.hashes());
-					}
-				}
-			}
-		}
-	}
-}
-
-void
-bfaHit(
-    std::ifstream& in,
-    btllib::KmerBloomFilter& mydBF,
-    btllib::CountingBloomFilter<cbf_counter_t>& cbf,
-    btllib::KmerBloomFilter& myhBF)
-{
-	bool good = true;
-#pragma omp parallel
-	for (string seq, hseq; good;) {
-		string rSeqs;
-#pragma omp critical(in)
-		{
-			good = static_cast<bool>(getline(in, seq));
-			while (good && seq[0] != '>') {
-				rSeqs += seq;
-				good = static_cast<bool>(getline(in, seq));
-			}
-		}
-		btllib::NtHash nth(rSeqs, opt::h + 1, opt::k);
+	btllib::SeqReader reader(file_path, opt::seq_reader_mode);
+#pragma omp parallel shared(reader)
+	for (const auto& record : reader) {
+		btllib::NtHash nth(record.seq, opt::h + 1, opt::k);
 		while (nth.roll()) {
 			if (!mydBF.contains_insert(nth.hashes())) {
+				string canonKmer = record.seq.substr(nth.get_pos(), opt::k);
+				getCanon(canonKmer);
 				if (opt::hitCap > 1) {
-					if (cbf.insert_thresh_contains(nth.hashes(), opt::hitCap - 1))
+					if (mycBF.insert_thresh_contains(nth.hashes(), opt::hitCap - 1)) {
+						hitSearchInsert(nth.hashes()[0], canonKmer, locks, hitTable);
+					}
+				} else {
+					hitSearchInsert(nth.hashes()[0], canonKmer, locks, hitTable);
+				}
+			}
+		}
+	}
+}
+
+void
+b_hit(
+    const std::string& file_path,
+    btllib::KmerBloomFilter& mydBF,
+    btllib::CountingBloomFilter<cbf_counter_t>& mycBF,
+    btllib::KmerBloomFilter& myhBF)
+{
+	btllib::SeqReader reader(file_path, opt::seq_reader_mode);
+#pragma omp parallel shared(reader)
+	for (const auto record : reader) {
+		btllib::NtHash nth(record.seq, opt::h + 1, opt::k);
+		while (nth.roll()) {
+			if (mydBF.contains_insert(nth.hashes())) {
+				if (opt::hitCap > 1) {
+					if (mycBF.insert_thresh_contains(nth.hashes(), opt::hitCap - 1))
 						myhBF.insert(nth.hashes());
 				} else {
 					myhBF.insert(nth.hashes());
@@ -318,6 +237,11 @@ main(int argc, char** argv)
 	    .default_value(false)
 	    .implicit_value(true);
 
+	parser.add_argument("--long-mode")
+	    .help("Optimize data reader for long sequences (>5kbp)")
+	    .default_value(false)
+	    .implicit_value(true);
+
 	parser.add_argument("-b", "--bit").default_value(16U).scan<'u', unsigned>();
 	parser.add_argument("-F").scan<'u', unsigned>();
 	parser.add_argument("-f").scan<'u', unsigned>();
@@ -341,6 +265,12 @@ main(int argc, char** argv)
 	opt::prefix = parser.get("-p");
 	opt::outbloom = parser.get<bool>("--outbloom");
 	opt::solid = parser.get<bool>("--solid");
+
+	if (parser.get<bool>("--long-mode")) {
+		opt::seq_reader_mode = btllib::SeqReader::Flag::LONG_MODE;
+	} else {
+		opt::seq_reader_mode = btllib::SeqReader::Flag::SHORT_MODE;
+	}
 
 	if (parser.is_used("-F")) {
 		opt::F0 = parser.get<unsigned>("-F");
@@ -423,38 +353,22 @@ main(int argc, char** argv)
 #endif
 
 	btllib::KmerBloomFilter mydBF(opt::dbfSize / 8, 3, opt::k);
-	btllib::CountingBloomFilter<cbf_counter_t> cbf(opt::cbfSize, opt::h);
+	btllib::CountingBloomFilter<cbf_counter_t> mycBF(opt::cbfSize, opt::h);
 
 	if (opt::outbloom) {
 		btllib::KmerBloomFilter myhBF(opt::hitSize / 8, opt::h + 1, opt::k);
-		for (unsigned file_i = 0; file_i < inFiles.size(); ++file_i) {
-			std::ifstream in(inFiles[file_i].c_str());
-			string firstLine;
-			bool good = static_cast<bool>(getline(in, firstLine));
-			if (!good) {
-				std::cerr << "Error in reading file: " << inFiles[file_i] << "\n";
-				exit(EXIT_FAILURE);
-			}
-			if (firstLine[0] == '>')
-				bfaHit(in, mydBF, cbf, myhBF);
-			else if (firstLine[0] == '@')
-				bfqHit(in, mydBF, cbf, myhBF);
-			else {
-				std::cerr << "Error in reading file: " << inFiles[file_i] << "\n";
-				exit(EXIT_FAILURE);
-			}
-			in.close();
+		for (const auto& file_path : inFiles) {
+			b_hit(file_path, mydBF, mycBF, myhBF);
 		}
-
-		std::stringstream hstm;
-		if (opt::prefix.empty()) {
-			if (opt::solid)
-				hstm << "solids_k" << opt::k << ".bf";
-			else
-				hstm << "repeat_k" << opt::k << ".bf";
-		} else
-			hstm << opt::prefix << "_k" << opt::k << ".bf";
-		myhBF.save(hstm.str().c_str());
+		std::string hbf_out_path;
+		if (opt::prefix.empty() && opt::solid) {
+			hbf_out_path = "solids_k" + std::to_string(opt::k) + ".bf";
+		} else if (opt::prefix.empty() && !opt::solid) {
+			hbf_out_path = "repeat_k" + std::to_string(opt::k) + ".bf";
+		} else {
+			hbf_out_path = opt::prefix + "_k" + std::to_string(opt::k) + ".bf";
+		}
+		myhBF.save(hbf_out_path);
 	} else {
 		entry* hitTable = new entry[opt::hitSize];
 		for (size_t i = 0; i < opt::hitSize; i++)
@@ -465,23 +379,8 @@ main(int argc, char** argv)
 		for (unsigned i = 0; i < lockSize; i++)
 			omp_init_lock(&locks[i]);
 
-		for (unsigned file_i = 0; file_i < inFiles.size(); ++file_i) {
-			std::ifstream in(inFiles[file_i].c_str());
-			string firstLine;
-			bool good = static_cast<bool>(getline(in, firstLine));
-			if (!good) {
-				std::cerr << "Error in reading file: " << inFiles[file_i] << "\n";
-				exit(EXIT_FAILURE);
-			}
-			if (firstLine[0] == '>')
-				faHit(in, locks, mydBF, cbf, hitTable);
-			else if (firstLine[0] == '@')
-				fqHit(in, locks, mydBF, cbf, hitTable);
-			else {
-				std::cerr << "Error in reading file: " << inFiles[file_i] << "\n";
-				exit(EXIT_FAILURE);
-			}
-			in.close();
+		for (const auto& file_path : inFiles) {
+			f_hit(file_path, locks, mydBF, mycBF, hitTable);
 		}
 
 		for (unsigned i = 0; i < lockSize; i++)
