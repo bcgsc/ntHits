@@ -1,4 +1,5 @@
 #include <argparse/argparse.hpp>
+#include <btllib/counting_bloom_filter.hpp>
 #include <btllib/nthash.hpp>
 #include <cmath>
 #include <iomanip>
@@ -7,7 +8,6 @@
 #include <vector>
 
 #include "BloomFilter.hpp"
-#include "CBFilter.hpp"
 #include "ntcard.hpp"
 
 #ifdef _OPENMP
@@ -20,6 +20,7 @@
 #define PROGRAM_COPYRIGHT "Copyright 2019 Canada's Michael Smith Genome Science Centre"
 
 using namespace std;
+using cbf_counter_t = uint8_t;
 
 namespace opt {
 size_t t = 16;
@@ -136,7 +137,12 @@ hitSearch(const uint64_t kint, const string& kmer, entry* T)
 }
 
 void
-fqHit(std::ifstream& in, omp_lock_t* locks, BloomFilter& mydBF, CBFilter& mycBF, entry* hitTable)
+fqHit(
+    std::ifstream& in,
+    omp_lock_t* locks,
+    BloomFilter& mydBF,
+    btllib::CountingBloomFilter<cbf_counter_t>& mycBF,
+    entry* hitTable)
 {
 	bool good, good2 = true;
 #pragma omp parallel
@@ -155,7 +161,7 @@ fqHit(std::ifstream& in, omp_lock_t* locks, BloomFilter& mydBF, CBFilter& mycBF,
 					string canonKmer = rSeqs.substr(nth.get_pos(), opt::k);
 					getCanon(canonKmer);
 					if (opt::hitCap > 1) {
-						if (mycBF.insert_and_test(nth.hashes())) {
+						if (mycBF.insert_contains(nth.hashes())) {
 							hitSearchInsert(nth.hashes()[0], canonKmer, locks, hitTable);
 						}
 					} else {
@@ -168,7 +174,12 @@ fqHit(std::ifstream& in, omp_lock_t* locks, BloomFilter& mydBF, CBFilter& mycBF,
 }
 
 void
-faHit(std::ifstream& in, omp_lock_t* locks, BloomFilter& mydBF, CBFilter& mycBF, entry* hitTable)
+faHit(
+    std::ifstream& in,
+    omp_lock_t* locks,
+    BloomFilter& mydBF,
+    btllib::CountingBloomFilter<cbf_counter_t>& cbf,
+    entry* hitTable)
 {
 	bool good = true;
 #pragma omp parallel
@@ -185,7 +196,7 @@ faHit(std::ifstream& in, omp_lock_t* locks, BloomFilter& mydBF, CBFilter& mycBF,
 		btllib::NtHash nth(rSeqs, opt::h, opt::k);
 		while (nth.roll()) {
 			if (!mydBF.insert_make_change(nth.hashes()))
-				if (mycBF.insert_and_test(nth.hashes())) {
+				if (cbf.insert_thresh_contains(nth.hashes(), opt::hitCap - 1)) {
 					string canonKmer = rSeqs.substr(nth.get_pos(), opt::k);
 					getCanon(canonKmer);
 					hitSearchInsert(nth.hashes()[0], canonKmer, locks, hitTable);
@@ -195,7 +206,11 @@ faHit(std::ifstream& in, omp_lock_t* locks, BloomFilter& mydBF, CBFilter& mycBF,
 }
 
 void
-bfqHit(std::ifstream& in, BloomFilter& mydBF, CBFilter& mycBF, BloomFilter& myhBF)
+bfqHit(
+    std::ifstream& in,
+    BloomFilter& mydBF,
+    btllib::CountingBloomFilter<cbf_counter_t>& cbf,
+    BloomFilter& myhBF)
 {
 	bool good, good2 = true;
 #pragma omp parallel
@@ -212,7 +227,7 @@ bfqHit(std::ifstream& in, BloomFilter& mydBF, CBFilter& mycBF, BloomFilter& myhB
 			while (nth.roll()) {
 				if (!mydBF.insert_make_change(nth.hashes())) {
 					if (opt::hitCap > 1) {
-						if (mycBF.insert_and_test(nth.hashes()))
+						if (cbf.insert_thresh_contains(nth.hashes(), opt::hitCap - 1))
 							myhBF.insert(nth.hashes());
 					} else {
 						myhBF.insert(nth.hashes());
@@ -224,7 +239,11 @@ bfqHit(std::ifstream& in, BloomFilter& mydBF, CBFilter& mycBF, BloomFilter& myhB
 }
 
 void
-bfaHit(std::ifstream& in, BloomFilter& mydBF, CBFilter& mycBF, BloomFilter& myhBF)
+bfaHit(
+    std::ifstream& in,
+    BloomFilter& mydBF,
+    btllib::CountingBloomFilter<cbf_counter_t>& cbf,
+    BloomFilter& myhBF)
 {
 	bool good = true;
 #pragma omp parallel
@@ -242,7 +261,7 @@ bfaHit(std::ifstream& in, BloomFilter& mydBF, CBFilter& mycBF, BloomFilter& myhB
 		while (nth.roll()) {
 			if (!mydBF.insert_make_change(nth.hashes())) {
 				if (opt::hitCap > 1) {
-					if (mycBF.insert_and_test(nth.hashes()))
+					if (cbf.insert_thresh_contains(nth.hashes(), opt::hitCap - 1))
 						myhBF.insert(nth.hashes());
 				} else {
 					myhBF.insert(nth.hashes());
@@ -404,7 +423,7 @@ main(int argc, char** argv)
 #endif
 
 	BloomFilter mydBF(opt::dbfSize, 3, opt::k);
-	CBFilter mycBF(opt::cbfSize, opt::h, opt::k, opt::hitCap - 1);
+	btllib::CountingBloomFilter<cbf_counter_t> cbf(opt::cbfSize, opt::h);
 
 	if (opt::outbloom) {
 		BloomFilter myhBF(opt::hitSize, opt::h + 1, opt::k);
@@ -417,9 +436,9 @@ main(int argc, char** argv)
 				exit(EXIT_FAILURE);
 			}
 			if (firstLine[0] == '>')
-				bfaHit(in, mydBF, mycBF, myhBF);
+				bfaHit(in, mydBF, cbf, myhBF);
 			else if (firstLine[0] == '@')
-				bfqHit(in, mydBF, mycBF, myhBF);
+				bfqHit(in, mydBF, cbf, myhBF);
 			else {
 				std::cerr << "Error in reading file: " << inFiles[file_i] << "\n";
 				exit(EXIT_FAILURE);
@@ -455,9 +474,9 @@ main(int argc, char** argv)
 				exit(EXIT_FAILURE);
 			}
 			if (firstLine[0] == '>')
-				faHit(in, locks, mydBF, mycBF, hitTable);
+				faHit(in, locks, mydBF, cbf, hitTable);
 			else if (firstLine[0] == '@')
-				fqHit(in, locks, mydBF, mycBF, hitTable);
+				fqHit(in, locks, mydBF, cbf, hitTable);
 			else {
 				std::cerr << "Error in reading file: " << inFiles[file_i] << "\n";
 				exit(EXIT_FAILURE);
