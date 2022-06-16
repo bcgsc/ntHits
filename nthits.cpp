@@ -1,4 +1,5 @@
 #include <argparse/argparse.hpp>
+#include <btllib/bloom_filter.hpp>
 #include <btllib/counting_bloom_filter.hpp>
 #include <btllib/nthash.hpp>
 #include <cmath>
@@ -7,7 +8,6 @@
 #include <string>
 #include <vector>
 
-#include "BloomFilter.hpp"
 #include "ntcard.hpp"
 
 #ifdef _OPENMP
@@ -140,7 +140,7 @@ void
 fqHit(
     std::ifstream& in,
     omp_lock_t* locks,
-    BloomFilter& mydBF,
+    btllib::KmerBloomFilter& mydBF,
     btllib::CountingBloomFilter<cbf_counter_t>& mycBF,
     entry* hitTable)
 {
@@ -157,7 +157,7 @@ fqHit(
 		if (good) {
 			btllib::NtHash nth(rSeqs, opt::h + 1, opt::k);
 			while (nth.roll()) {
-				if (!mydBF.insert_make_change(nth.hashes())) {
+				if (!mydBF.contains_insert(nth.hashes())) {
 					string canonKmer = rSeqs.substr(nth.get_pos(), opt::k);
 					getCanon(canonKmer);
 					if (opt::hitCap > 1) {
@@ -177,7 +177,7 @@ void
 faHit(
     std::ifstream& in,
     omp_lock_t* locks,
-    BloomFilter& mydBF,
+    btllib::KmerBloomFilter& mydBF,
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
     entry* hitTable)
 {
@@ -195,7 +195,7 @@ faHit(
 		}
 		btllib::NtHash nth(rSeqs, opt::h, opt::k);
 		while (nth.roll()) {
-			if (!mydBF.insert_make_change(nth.hashes()))
+			if (!mydBF.contains_insert(nth.hashes()))
 				if (cbf.insert_thresh_contains(nth.hashes(), opt::hitCap - 1)) {
 					string canonKmer = rSeqs.substr(nth.get_pos(), opt::k);
 					getCanon(canonKmer);
@@ -208,9 +208,9 @@ faHit(
 void
 bfqHit(
     std::ifstream& in,
-    BloomFilter& mydBF,
+    btllib::KmerBloomFilter& mydBF,
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
-    BloomFilter& myhBF)
+    btllib::KmerBloomFilter& myhBF)
 {
 	bool good, good2 = true;
 #pragma omp parallel
@@ -225,7 +225,7 @@ bfqHit(
 		if (good) {
 			btllib::NtHash nth(rSeqs, opt::h + 1, opt::k);
 			while (nth.roll()) {
-				if (!mydBF.insert_make_change(nth.hashes())) {
+				if (!mydBF.contains_insert(nth.hashes())) {
 					if (opt::hitCap > 1) {
 						if (cbf.insert_thresh_contains(nth.hashes(), opt::hitCap - 1))
 							myhBF.insert(nth.hashes());
@@ -241,9 +241,9 @@ bfqHit(
 void
 bfaHit(
     std::ifstream& in,
-    BloomFilter& mydBF,
+    btllib::KmerBloomFilter& mydBF,
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
-    BloomFilter& myhBF)
+    btllib::KmerBloomFilter& myhBF)
 {
 	bool good = true;
 #pragma omp parallel
@@ -259,7 +259,7 @@ bfaHit(
 		}
 		btllib::NtHash nth(rSeqs, opt::h + 1, opt::k);
 		while (nth.roll()) {
-			if (!mydBF.insert_make_change(nth.hashes())) {
+			if (!mydBF.contains_insert(nth.hashes())) {
 				if (opt::hitCap > 1) {
 					if (cbf.insert_thresh_contains(nth.hashes(), opt::hitCap - 1))
 						myhBF.insert(nth.hashes());
@@ -422,11 +422,11 @@ main(int argc, char** argv)
 	omp_set_num_threads(opt::t);
 #endif
 
-	BloomFilter mydBF(opt::dbfSize, 3, opt::k);
+	btllib::KmerBloomFilter mydBF(opt::dbfSize / 8, 3, opt::k);
 	btllib::CountingBloomFilter<cbf_counter_t> cbf(opt::cbfSize, opt::h);
 
 	if (opt::outbloom) {
-		BloomFilter myhBF(opt::hitSize, opt::h + 1, opt::k);
+		btllib::KmerBloomFilter myhBF(opt::hitSize / 8, opt::h + 1, opt::k);
 		for (unsigned file_i = 0; file_i < inFiles.size(); ++file_i) {
 			std::ifstream in(inFiles[file_i].c_str());
 			string firstLine;
@@ -454,7 +454,7 @@ main(int argc, char** argv)
 				hstm << "repeat_k" << opt::k << ".bf";
 		} else
 			hstm << opt::prefix << "_k" << opt::k << ".bf";
-		myhBF.storeFilter(hstm.str().c_str());
+		myhBF.save(hstm.str().c_str());
 	} else {
 		entry* hitTable = new entry[opt::hitSize];
 		for (size_t i = 0; i < opt::hitSize; i++)
