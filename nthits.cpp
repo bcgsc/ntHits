@@ -177,13 +177,20 @@ main(int argc, char** argv)
 	args.parse(argc, argv);
 
 	if (args.use_ntcard()) {
-		size_t histArray[10002];
-		getHist(
-		    args.get_input_files(),
-		    args.get_seeds(),
-		    args.get_kmer_length(),
-		    args.get_num_threads(),
-		    histArray);
+		ntcard::NtCard ntc(args.get_kmer_length());
+		unsigned seq_reader_mode;
+		if (ProgramArguments::get_instance().long_mode()) {
+			seq_reader_mode = btllib::SeqReader::Flag::LONG_MODE;
+		} else {
+			seq_reader_mode = btllib::SeqReader::Flag::SHORT_MODE;
+		}
+		for (const auto& file : args.get_input_files()) {
+			btllib::SeqReader reader(file, seq_reader_mode);
+			for (const auto& record : reader) {
+				ntc.process(record.seq);
+			}
+		}
+		auto histArray = ntc.get_histogram(10000);
 
 		int histIndex = 2, errCov = 1;
 		while (histIndex <= 10000 && histArray[histIndex] > histArray[histIndex + 1])
