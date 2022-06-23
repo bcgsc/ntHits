@@ -99,7 +99,7 @@ void
 f_hit(
     const std::string& file_path,
     omp_lock_t* locks,
-    btllib::KmerBloomFilter& distincts,
+    btllib::BloomFilter& distincts,
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
     entry* table,
     ProgramArguments& args)
@@ -112,7 +112,7 @@ f_hit_seeds(
     const std::string& file_path,
     const std::vector<std::string>& seeds,
     omp_lock_t* locks,
-    btllib::KmerBloomFilter& distincts,
+    btllib::BloomFilter& distincts,
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
     entry* table,
     ProgramArguments& args)
@@ -147,9 +147,9 @@ f_hit_seeds(
 void
 b_hit(
     const std::string& file_path,
-    btllib::KmerBloomFilter& mydBF,
+    btllib::BloomFilter& mydBF,
     btllib::CountingBloomFilter<cbf_counter_t>& mycBF,
-    btllib::KmerBloomFilter& myhBF,
+    btllib::BloomFilter& myhBF,
     ProgramArguments& args)
 {
 	B_HIT(btllib::NtHash nth(record.seq, args.get_num_hashes() + 1, args.get_kmer_length());)
@@ -159,9 +159,9 @@ void
 b_hit_seeds(
     const std::string& file_path,
     const std::vector<std::string>& seeds,
-    btllib::KmerBloomFilter& mydBF,
+    btllib::BloomFilter& mydBF,
     btllib::CountingBloomFilter<cbf_counter_t>& mycBF,
-    btllib::KmerBloomFilter& myhBF,
+    btllib::BloomFilter& myhBF,
     ProgramArguments& args)
 {
 	B_HIT(btllib::SeedNtHash nth(
@@ -247,12 +247,11 @@ main(int argc, char** argv)
 	omp_set_num_threads(args.get_num_threads());
 #endif
 
-	btllib::KmerBloomFilter mydBF(args.get_dbf_size() / 8, 3, args.get_kmer_length());
+	btllib::BloomFilter mydBF(args.get_dbf_size() / 8, 3);
 	btllib::CountingBloomFilter<cbf_counter_t> mycBF(args.get_cbf_size(), args.get_num_hashes());
 
 	if (args.out_bloom()) {
-		btllib::KmerBloomFilter myhBF(
-		    args.get_hit_size() / 8, args.get_num_hashes() + 1, args.get_kmer_length());
+		btllib::BloomFilter myhBF(args.get_hit_size() / 8, args.get_num_hashes() + 1);
 		for (const auto& file_path : args.get_input_files()) {
 			if (args.get_seeds().empty()) {
 				b_hit(file_path, mydBF, mycBF, myhBF, args);
