@@ -99,7 +99,7 @@ void
 f_hit(
     const std::string& file_path,
     omp_lock_t* locks,
-    btllib::BloomFilter& distincts,
+    btllib::KmerBloomFilter& distincts,
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
     entry* table,
     ProgramArguments& args)
@@ -112,7 +112,7 @@ f_hit_seeds(
     const std::string& file_path,
     const std::vector<std::string>& seeds,
     omp_lock_t* locks,
-    btllib::BloomFilter& distincts,
+    btllib::SeedBloomFilter& distincts,
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
     entry* table,
     ProgramArguments& args)
@@ -147,9 +147,9 @@ f_hit_seeds(
 void
 b_hit(
     const std::string& file_path,
-    btllib::BloomFilter& mydBF,
+    btllib::KmerBloomFilter& mydBF,
     btllib::CountingBloomFilter<cbf_counter_t>& mycBF,
-    btllib::BloomFilter& myhBF,
+    btllib::KmerBloomFilter& myhBF,
     ProgramArguments& args)
 {
 	B_HIT(btllib::NtHash nth(record.seq, args.get_num_hashes() + 1, args.get_kmer_length());)
@@ -159,9 +159,9 @@ void
 b_hit_seeds(
     const std::string& file_path,
     const std::vector<std::string>& seeds,
-    btllib::BloomFilter& mydBF,
+    btllib::SeedBloomFilter& mydBF,
     btllib::CountingBloomFilter<cbf_counter_t>& mycBF,
-    btllib::BloomFilter& myhBF,
+    btllib::SeedBloomFilter& myhBF,
     ProgramArguments& args)
 {
 	B_HIT(btllib::SeedNtHash nth(
@@ -247,18 +247,7 @@ main(int argc, char** argv)
 	omp_set_num_threads(args.get_num_threads());
 #endif
 
-	btllib::BloomFilter mydBF(args.get_dbf_size() / 8, 3);
-	btllib::CountingBloomFilter<cbf_counter_t> mycBF(args.get_cbf_size(), args.get_num_hashes());
-
 	if (args.out_bloom()) {
-		btllib::BloomFilter myhBF(args.get_hit_size() / 8, args.get_num_hashes() + 1);
-		for (const auto& file_path : args.get_input_files()) {
-			if (args.get_seeds().empty()) {
-				b_hit(file_path, mydBF, mycBF, myhBF, args);
-			} else {
-				b_hit_seeds(file_path, args.get_seeds(), mydBF, mycBF, myhBF, args);
-			}
-		}
 		std::string hbf_out_path;
 		if (args.get_prefix().empty() && args.solid()) {
 			hbf_out_path = "solids_k" + std::to_string(args.get_kmer_length()) + ".bf";
@@ -268,7 +257,31 @@ main(int argc, char** argv)
 			hbf_out_path =
 			    args.get_prefix() + "_k" + std::to_string(args.get_kmer_length()) + ".bf";
 		}
-		myhBF.save(hbf_out_path);
+		if (args.get_seeds().empty()) {
+			btllib::KmerBloomFilter mydBF(args.get_dbf_size() / 8, 3, args.get_kmer_length());
+			btllib::CountingBloomFilter<cbf_counter_t> mycBF(
+			    args.get_cbf_size(), args.get_num_hashes());
+			btllib::KmerBloomFilter myhBF(
+			    args.get_hit_size() / 8, args.get_num_hashes() + 1, args.get_kmer_length());
+			for (const auto& file_path : args.get_input_files()) {
+				b_hit(file_path, mydBF, mycBF, myhBF, args);
+			}
+			myhBF.save(hbf_out_path);
+		} else {
+			btllib::SeedBloomFilter mydBF(
+			    args.get_dbf_size() / 8, args.get_kmer_length(), args.get_seeds(), 3);
+			btllib::CountingBloomFilter<cbf_counter_t> mycBF(
+			    args.get_cbf_size(), args.get_num_hashes());
+			btllib::SeedBloomFilter myhBF(
+			    args.get_hit_size() / 8,
+			    args.get_kmer_length(),
+			    args.get_seeds(),
+			    args.get_num_hashes() + 1);
+			for (const auto& file_path : args.get_input_files()) {
+				b_hit_seeds(file_path, args.get_seeds(), mydBF, mycBF, myhBF, args);
+			}
+			myhBF.save(hbf_out_path);
+		}
 	} else {
 		entry* hitTable = new entry[args.get_hit_size()];
 		for (size_t i = 0; i < args.get_hit_size(); i++)
@@ -279,10 +292,19 @@ main(int argc, char** argv)
 		for (unsigned i = 0; i < lockSize; i++)
 			omp_init_lock(&locks[i]);
 
-		for (const auto& file_path : args.get_input_files()) {
-			if (args.get_seeds().empty()) {
+		if (args.get_seeds().empty()) {
+			btllib::KmerBloomFilter mydBF(args.get_dbf_size() / 8, 3, args.get_kmer_length());
+			btllib::CountingBloomFilter<cbf_counter_t> mycBF(
+			    args.get_cbf_size(), args.get_num_hashes());
+			for (const auto& file_path : args.get_input_files()) {
 				f_hit(file_path, locks, mydBF, mycBF, hitTable, args);
-			} else {
+			}
+		} else {
+			btllib::SeedBloomFilter mydBF(
+			    args.get_dbf_size() / 8, args.get_kmer_length(), args.get_seeds(), 3);
+			btllib::CountingBloomFilter<cbf_counter_t> mycBF(
+			    args.get_cbf_size(), args.get_num_hashes());
+			for (const auto& file_path : args.get_input_files()) {
 				f_hit_seeds(file_path, args.get_seeds(), locks, mydBF, mycBF, hitTable, args);
 			}
 		}
