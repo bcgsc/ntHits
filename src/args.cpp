@@ -17,7 +17,7 @@ ProgramArguments::parse(int argc, char** argv)
 	    .scan<'u', unsigned>();
 
 	parser.add_argument("-k", "--kmer")
-	    .help("k-mer length")
+	    .help("k-mer length, ignored if using spaced seeds (-s)")
 	    .default_value(64U)
 	    .scan<'u', unsigned>();
 
@@ -36,7 +36,7 @@ ProgramArguments::parse(int argc, char** argv)
 	    .default_value(std::string("repeat"));
 
 	parser.add_argument("-s", "--seeds")
-	    .help("If specified, use given spaced seeds separated by commas (e.g. 10101,11011)");
+	    .help("If specified, use spaced seeds (separate with commas, e.g. 10101,11011)");
 
 	parser.add_argument("--outbloom")
 	    .help("Output the most frequent k-mers in a Bloom filter")
@@ -100,6 +100,7 @@ ProgramArguments::parse(int argc, char** argv)
 		std::string seed;
 		while (std::getline(ss, seed, ',')) {
 			seeds.push_back(seed);
+			k = seed.size();
 		}
 	}
 
