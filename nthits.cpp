@@ -278,7 +278,8 @@ main(int argc, char** argv)
 			    args.get_seeds(),
 			    args.get_num_hashes() + 1);
 			for (const auto& file_path : args.get_input_files()) {
-				b_hit_seeds(file_path, args.get_seeds(), mydBF, mycBF, myhBF, args);
+				for (const auto& seed : args.get_seeds())
+					b_hit_seeds(file_path,  { seed } , mydBF, mycBF, myhBF, args);
 			}
 			myhBF.save(hbf_out_path);
 		}
@@ -305,7 +306,8 @@ main(int argc, char** argv)
 			btllib::CountingBloomFilter<cbf_counter_t> mycBF(
 			    args.get_cbf_size(), args.get_num_hashes());
 			for (const auto& file_path : args.get_input_files()) {
-				f_hit_seeds(file_path, args.get_seeds(), locks, mydBF, mycBF, hitTable, args);
+				for (const auto& seed : args.get_seeds())
+					f_hit_seeds(file_path, { seed }, locks, mydBF, mycBF, hitTable, args);
 			}
 		}
 
