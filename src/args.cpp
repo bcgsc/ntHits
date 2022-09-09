@@ -28,7 +28,7 @@ ProgramArguments::parse(int argc, char** argv)
 
 	parser.add_argument("-c", "--cutoff")
 	    .help("k-mer cutoff threshold")
-	    .required()
+	    .default_value(0U)
 	    .scan<'u', unsigned>();
 
 	parser.add_argument("-p", "--prefix")
