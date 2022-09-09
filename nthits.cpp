@@ -110,7 +110,7 @@ f_hit(
 void
 f_hit_seeds(
     const std::string& file_path,
-    const std::vector<std::string>& seeds,
+    const std::string& seed,
     omp_lock_t* locks,
     btllib::SeedBloomFilter& distincts,
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
@@ -118,7 +118,7 @@ f_hit_seeds(
     ProgramArguments& args)
 {
 	F_HIT(btllib::SeedNtHash nth(
-	          record.seq, seeds, args.get_num_hashes() + 1, args.get_kmer_length());)
+	          record.seq, { seed }, args.get_num_hashes() + 1, args.get_kmer_length());)
 }
 
 #define B_HIT(NTHASH)                                                                              \
@@ -158,14 +158,14 @@ b_hit(
 void
 b_hit_seeds(
     const std::string& file_path,
-    const std::vector<std::string>& seeds,
+    const std::string& seed,
     btllib::SeedBloomFilter& mydBF,
     btllib::CountingBloomFilter<cbf_counter_t>& mycBF,
     btllib::SeedBloomFilter& myhBF,
     ProgramArguments& args)
 {
 	B_HIT(btllib::SeedNtHash nth(
-	          record.seq, seeds, args.get_num_hashes() + 1, args.get_kmer_length());)
+	          record.seq, { seed }, args.get_num_hashes() + 1, args.get_kmer_length());)
 }
 
 int
@@ -279,7 +279,7 @@ main(int argc, char** argv)
 			    args.get_num_hashes() + 1);
 			for (const auto& file_path : args.get_input_files()) {
 				for (const auto& seed : args.get_seeds())
-					b_hit_seeds(file_path,  { seed } , mydBF, mycBF, myhBF, args);
+					b_hit_seeds(file_path,  seed , mydBF, mycBF, myhBF, args);
 			}
 			myhBF.save(hbf_out_path);
 		}
@@ -307,7 +307,7 @@ main(int argc, char** argv)
 			    args.get_cbf_size(), args.get_num_hashes());
 			for (const auto& file_path : args.get_input_files()) {
 				for (const auto& seed : args.get_seeds())
-					f_hit_seeds(file_path, { seed }, locks, mydBF, mycBF, hitTable, args);
+					f_hit_seeds(file_path, seed, locks, mydBF, mycBF, hitTable, args);
 			}
 		}
 
