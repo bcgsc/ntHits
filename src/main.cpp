@@ -10,12 +10,9 @@
 #include <cmath>
 #include <iomanip>
 #include <iostream>
+#include <omp.h>
 #include <string>
 #include <vector>
-
-#ifdef _OPENMP
-#include <omp.h>
-#endif
 
 using cbf_counter_t = uint8_t;
 
@@ -279,7 +276,7 @@ main(int argc, char** argv)
 			    args.get_num_hashes() + 1);
 			for (const auto& file_path : args.get_input_files()) {
 				for (const auto& seed : args.get_seeds())
-					b_hit_seeds(file_path,  seed , mydBF, mycBF, myhBF, args);
+					b_hit_seeds(file_path, seed, mydBF, mycBF, myhBF, args);
 			}
 			myhBF.save(hbf_out_path);
 		}
