@@ -1,19 +1,19 @@
 #include "utils.hpp"
 
 void
-nthits::to_canonical(std::string& bMer)
+nthits::to_canonical(std::string& bmer)
 {
-	int p = 0, hLen = (bMer.length() - 1) / 2;
-	while (bMer[p] == b2r[(unsigned char)bMer[bMer.length() - 1 - p]]) {
+	int p = 0, h_len = (bmer.length() - 1) / 2;
+	while (bmer[p] == b2r[(unsigned char)bmer[bmer.length() - 1 - p]]) {
 		++p;
-		if (p >= hLen)
+		if (p >= h_len)
 			break;
 	}
-	if (bMer[p] > b2r[(unsigned char)bMer[bMer.length() - 1 - p]]) {
-		for (int lIndex = p, rIndex = bMer.length() - 1 - p; lIndex <= rIndex; ++lIndex, --rIndex) {
-			char tmp = b2r[(unsigned char)bMer[rIndex]];
-			bMer[rIndex] = b2r[(unsigned char)bMer[lIndex]];
-			bMer[lIndex] = tmp;
+	if (bmer[p] > b2r[(unsigned char)bmer[bmer.length() - 1 - p]]) {
+		for (int l_idx = p, r_idx = bmer.length() - 1 - p; l_idx <= r_idx; ++l_idx, --r_idx) {
+			char tmp = b2r[(unsigned char)bmer[r_idx]];
+			bmer[r_idx] = b2r[(unsigned char)bmer[l_idx]];
+			bmer[l_idx] = tmp;
 		}
 	}
 }
