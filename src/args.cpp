@@ -53,6 +53,14 @@ parse_arguments(int argc, char** argv)
 	    .default_value(false)
 	    .implicit_value(true);
 
+	parser.add_argument("-v")
+	    .action([&](const auto&) { ++args.verbosity; })
+	    .append()
+	    .help("Level of details printed to stdout (-v: normal, -vv detailed)")
+	    .default_value(false)
+	    .implicit_value(true)
+	    .nargs(0);
+
 	parser.add_argument("-b", "--bit").default_value(16U).scan<'u', unsigned>();
 	parser.add_argument("-F").scan<'u', unsigned>();
 	parser.add_argument("-f").scan<'u', unsigned>();
