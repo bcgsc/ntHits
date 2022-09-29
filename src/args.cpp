@@ -3,9 +3,11 @@
 #include <argparse/argparse.hpp>
 #include <sstream>
 
-void
-ProgramArguments::parse(int argc, char** argv)
+ProgramArguments
+parse_arguments(int argc, char** argv)
 {
+	ProgramArguments args;
+
 	auto default_args = argparse::default_arguments::none;
 	argparse::ArgumentParser parser(PROGRAM_NAME, PROGRAM_VERSION, default_args);
 	parser.add_description(PROGRAM_DESCRIPTION);
@@ -68,45 +70,47 @@ ProgramArguments::parse(int argc, char** argv)
 		std::exit(1);
 	}
 
-	t = parser.get<unsigned>("-t");
-	k = parser.get<unsigned>("-k");
-	h = parser.get<unsigned>("-h");
-	m = parser.get<unsigned>("-b");
-	hit_cap = parser.get<unsigned>("-c");
-	prefix = parser.get("-p");
-	_out_bloom = parser.get<bool>("--outbloom");
-	_solid = parser.get<bool>("--solid");
-	_long_mode = parser.get<bool>("--long-mode");
+	args.num_threads = parser.get<unsigned>("-t");
+	args.kmer_length = parser.get<unsigned>("-k");
+	args.num_hashes = parser.get<unsigned>("-h");
+	args.m = parser.get<unsigned>("-b");
+	args.hit_cap = parser.get<unsigned>("-c");
+	args.prefix = parser.get("-p");
+	args.out_bloom = parser.get<bool>("--outbloom");
+	args.solid = parser.get<bool>("--solid");
+	args.long_mode = parser.get<bool>("--long-mode");
 
-	_use_ntcard = true;
+	args.use_ntcard = true;
 
 	if (parser.is_used("-F")) {
-		F0 = parser.get<unsigned>("-F");
-		_use_ntcard = false;
+		args.f0 = parser.get<unsigned>("-F");
+		args.use_ntcard = false;
 	}
 
 	if (parser.is_used("-r")) {
-		fr = parser.get<unsigned>("-r");
-		_use_ntcard = false;
+		args.fr = parser.get<unsigned>("-r");
+		args.use_ntcard = false;
 	}
 
 	if (parser.is_used("-f")) {
-		f1 = parser.get<unsigned>("-f");
-		_use_ntcard = false;
+		args.f1 = parser.get<unsigned>("-f");
+		args.use_ntcard = false;
 	}
 
 	if (parser.is_used("-s")) {
 		std::istringstream ss(parser.get("-s"));
 		std::string seed;
 		while (std::getline(ss, seed, ',')) {
-			seeds.push_back(seed);
-			k = seed.size();
+			args.seeds.push_back(seed);
+			args.kmer_length = seed.size();
 		}
 	}
 
 	try {
-		input_files = parser.get<std::vector<std::string> >("files");
+		args.input_files = parser.get<std::vector<std::string> >("files");
 	} catch (std::logic_error& e) {
 		std::cerr << "No files provided" << std::endl;
 	}
+
+	return args;
 }
