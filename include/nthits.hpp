@@ -57,7 +57,7 @@ class HitTable
 void
 process(
     const std::string& seq,
-	const unsigned hit_cap,
+    const unsigned hit_cap,
     btllib::KmerBloomFilter& distincts,
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
     HitTable& hit_table);
@@ -65,7 +65,8 @@ process(
 void
 process(
     const std::string& seq,
-	const unsigned hit_cap,
+    const std::string& seed,
+    const unsigned hit_cap,
     btllib::SeedBloomFilter& distincts,
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
     HitTable& hit_table);
@@ -73,7 +74,7 @@ process(
 void
 process(
     const std::string& seq,
-	const unsigned hit_cap,
+    const unsigned hit_cap,
     btllib::KmerBloomFilter& distincts,
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
     btllib::KmerBloomFilter& hits);
@@ -81,7 +82,8 @@ process(
 void
 process(
     const std::string& seq,
-	const unsigned hit_cap,
+    const std::string& seed,
+    const unsigned hit_cap,
     btllib::SeedBloomFilter& distincts,
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
     btllib::SeedBloomFilter& hits);

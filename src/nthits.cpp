@@ -8,7 +8,7 @@ namespace {
 #define PROCESS_HIT_TABLE                                                                          \
 	while (nth.roll()) {                                                                           \
 		if (!distincts.contains_insert(nth.hashes())) {                                            \
-			std::string current_kmer = seq.substr(nth.get_pos(), distincts.get_k());               \
+			std::string current_kmer = seq.substr(nth.get_pos(), nth.get_k());                     \
 			to_canonical(current_kmer);                                                            \
 			if (hit_cap > 1) {                                                                     \
 				if (cbf.insert_thresh_contains(nth.hashes(), hit_cap - 1)) {                       \
@@ -71,19 +71,20 @@ nthits::process(
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
     HitTable& hit_table)
 {
-	btllib::NtHash nth(seq, cbf.get_hash_num(), distincts.get_k());
+	btllib::NtHash nth(seq, distincts.get_hash_num(), distincts.get_k());
 	PROCESS_HIT_TABLE
 }
 
 void
 nthits::process(
     const std::string& seq,
+    const std::string& seed,
     const unsigned hit_cap,
     btllib::SeedBloomFilter& distincts,
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
     HitTable& hit_table)
 {
-	btllib::SeedNtHash nth(seq, distincts.get_seeds(), cbf.get_hash_num(), distincts.get_k());
+	btllib::SeedNtHash nth(seq, { seed }, distincts.get_hash_num_per_seed(), distincts.get_k());
 	PROCESS_HIT_TABLE
 }
 
@@ -95,18 +96,19 @@ nthits::process(
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
     btllib::KmerBloomFilter& hit_filter)
 {
-	btllib::NtHash nth(seq, cbf.get_hash_num(), distincts.get_k());
+	btllib::NtHash nth(seq, hit_filter.get_hash_num(), distincts.get_k());
 	PROCESS_HIT_FILTER
 }
 
 void
 nthits::process(
     const std::string& seq,
+    const std::string& seed,
     const unsigned hit_cap,
     btllib::SeedBloomFilter& distincts,
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
     btllib::SeedBloomFilter& hit_filter)
 {
-	btllib::SeedNtHash nth(seq, distincts.get_seeds(), cbf.get_hash_num(), distincts.get_k());
+	btllib::SeedNtHash nth(seq, { seed }, hit_filter.get_hash_num_per_seed(), hit_filter.get_k());
 	PROCESS_HIT_FILTER
 }

@@ -15,12 +15,23 @@
 #include <string>
 #include <vector>
 
-#define POPULATE(HITS_CONTAINER)                                                                   \
+#define POPULATE_KMERS(HITS_CONTAINER)                                                             \
 	for (const auto& file_path : args.input_files) {                                               \
 		btllib::SeqReader reader(file_path, seq_reader_mode);                                      \
 		_Pragma("omp parallel shared(reader)");                                                    \
 		for (const auto& record : reader) {                                                        \
 			nthits::process(record.seq, args.hit_cap, bf, cbf, HITS_CONTAINER);                    \
+		}                                                                                          \
+	}
+
+#define POPULATE_SEEDS(HITS_CONTAINER)                                                             \
+	for (const auto& file_path : args.input_files) {                                               \
+		btllib::SeqReader reader(file_path, seq_reader_mode);                                      \
+		_Pragma("omp parallel shared(reader)");                                                    \
+		for (const auto& record : reader) {                                                        \
+			for (const auto& seed : args.seeds) {                                                  \
+				nthits::process(record.seq, seed, args.hit_cap, bf, cbf, HITS_CONTAINER);          \
+			}                                                                                      \
 		}                                                                                          \
 	}
 
@@ -72,25 +83,25 @@ main(int argc, char** argv)
 
 	btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
 	if (args.out_bloom && args.seeds.empty()) {
-		btllib::KmerBloomFilter bf(dbf_size / 8, 3, args.kmer_length);
-		btllib::KmerBloomFilter hits_filter(hit_size / 8, args.num_hashes + 1, args.kmer_length);
-		POPULATE(hits_filter)
+		btllib::KmerBloomFilter bf(dbf_size / 8, args.num_hashes, args.kmer_length);
+		btllib::KmerBloomFilter hits_filter(hit_size / 8, args.num_hashes, args.kmer_length);
+		POPULATE_KMERS(hits_filter)
 		hits_filter.save(out_file_prefix + ".bf");
 	} else if (args.out_bloom) {
-		btllib::SeedBloomFilter bf(dbf_size / 8, args.kmer_length, args.seeds, 3);
+		btllib::SeedBloomFilter bf(dbf_size / 8, args.kmer_length, args.seeds, args.num_hashes);
 		btllib::SeedBloomFilter hits_filter(
-		    hit_size / 8, args.kmer_length, args.seeds, args.num_hashes + 1);
-		POPULATE(hits_filter)
+		    hit_size / 8, args.kmer_length, args.seeds, args.num_hashes);
+		POPULATE_SEEDS(hits_filter)
 		hits_filter.save(out_file_prefix + ".bf");
 	} else if (args.seeds.empty()) {
-		btllib::KmerBloomFilter bf(dbf_size / 8, 3, args.kmer_length);
+		btllib::KmerBloomFilter bf(dbf_size / 8, args.num_hashes, args.kmer_length);
 		nthits::HitTable hits_table(hit_size);
-		POPULATE(hits_table)
+		POPULATE_KMERS(hits_table)
 		hits_table.save(out_file_prefix + ".rep", args.hit_cap);
 	} else {
-		btllib::SeedBloomFilter bf(dbf_size / 8, args.kmer_length, args.seeds, 3);
+		btllib::SeedBloomFilter bf(dbf_size / 8, args.kmer_length, args.seeds, args.num_hashes);
 		nthits::HitTable hits_table(hit_size);
-		POPULATE(hits_table)
+		POPULATE_SEEDS(hits_table)
 		hits_table.save(out_file_prefix + ".rep", args.hit_cap);
 	}
 
