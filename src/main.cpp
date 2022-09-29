@@ -30,9 +30,8 @@ main(int argc, char** argv)
 	double sTime = omp_get_wtime();
 
 	auto args = parse_arguments(argc, argv);
-	unsigned dbf_size, cbf_size, hit_size;
-	unsigned seq_reader_mode;
 
+	unsigned seq_reader_mode;
 	if (args.long_mode) {
 		seq_reader_mode = btllib::SeqReader::Flag::LONG_MODE;
 	} else {
@@ -50,6 +49,7 @@ main(int argc, char** argv)
 
 	omp_set_num_threads(args.num_threads);
 
+	unsigned dbf_size, cbf_size, hit_size;
 	if (args.use_ntcard) {
 		ntcard::NtCard ntc(args.kmer_length);
 		for (const auto& file : args.input_files) {
@@ -58,59 +58,21 @@ main(int argc, char** argv)
 				ntc.process(record.seq);
 			}
 		}
-		auto histArray = ntc.get_histogram(10000);
+		auto hist = ntc.get_histogram(10000);
 
-		int histIndex = 2, errCov = 1;
-		while (histIndex <= 10000 && histArray[histIndex] > histArray[histIndex + 1])
-			histIndex++;
+		size_t hit_count;
+		nthits::get_thresholds(hist, args.solid, hit_count, args.hit_cap);
 
-		errCov = histIndex > 300 ? 1 : histIndex - 1;
-
-		unsigned maxCov = errCov;
-		for (unsigned i = errCov; i < 10002; i++) {
-			if (histArray[i] >= histArray[maxCov])
-				maxCov = i;
-		}
-		maxCov--;
-
-		unsigned minCov = errCov;
-		for (unsigned i = errCov; i < maxCov; i++) {
-			if (histArray[i] <= histArray[minCov])
-				minCov = i;
-		}
-		minCov--;
-
-		if (args.solid) {
-			if (args.hit_cap == 0)
-				args.hit_cap = minCov;
-			std::cerr << "Errors k-mer coverage: " << args.hit_cap << std::endl;
-		} else {
-			if (args.hit_cap == 0)
-				args.hit_cap = 1.75 * maxCov;
-			std::cerr << "Errors k-mer coverage: " << minCov << std::endl;
-			std::cerr << "Median k-mer coverage: " << maxCov << std::endl;
-			std::cerr << "Repeat k-mer coverage: " << args.hit_cap << std::endl;
-		}
-
-		dbf_size = args.bits * histArray[1];
-		cbf_size = args.bytes * (histArray[1] - histArray[2]);
-		size_t hitCount = histArray[1];
-		for (unsigned i = 2; i <= args.hit_cap + 1; i++)
-			hitCount -= histArray[i];
-		hit_size = args.out_bloom ? hitCount * args.m : hitCount * 3;
-
-		std::cerr << "Approximate# of distinct k-mers: " << histArray[1] << "\n";
-		std::cerr << "Approximate# of solid k-mers: " << hitCount << "\n";
+		dbf_size = args.bits * hist[1];
+		cbf_size = args.bytes * (hist[1] - hist[2]);
+		hit_size = args.out_bloom ? hit_count * args.m : hit_count * 3;
 	} else {
 		dbf_size = args.bits * args.f0;
 		cbf_size = args.bytes * (args.f0 - args.f1);
 		hit_size = args.m * args.fr;
-		std::cerr << "Approximate# of distinct k-mers: " << args.f0 << "\n";
-		std::cerr << "Approximate# of solid k-mers: " << args.fr << "\n";
 	}
 
 	btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
-
 	if (args.out_bloom && args.seeds.empty()) {
 		btllib::KmerBloomFilter bf(dbf_size / 8, 3, args.kmer_length);
 		btllib::KmerBloomFilter hits_filter(hit_size / 8, args.num_hashes + 1, args.kmer_length);
@@ -134,7 +96,5 @@ main(int argc, char** argv)
 		hits_table.save(out_file_prefix + ".rep", args.hit_cap);
 	}
 
-	std::cerr << "Total time for computing repeat content in (sec): " << std::setprecision(4)
-	          << std::fixed << omp_get_wtime() - sTime << "\n";
 	return 0;
 }

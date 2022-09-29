@@ -8,14 +8,14 @@ namespace {
 #define PROCESS_HIT_TABLE                                                                          \
 	while (nth.roll()) {                                                                           \
 		if (!distincts.contains_insert(nth.hashes())) {                                            \
-			std::string canonical = seq.substr(nth.get_pos(), distincts.get_k());                  \
-			getCanon(canonical);                                                                   \
+			std::string current_kmer = seq.substr(nth.get_pos(), distincts.get_k());               \
+			to_canonical(current_kmer);                                                            \
 			if (hit_cap > 1) {                                                                     \
 				if (cbf.insert_thresh_contains(nth.hashes(), hit_cap - 1)) {                       \
-					hit_table.insert(nth.hashes()[0], canonical);                                  \
+					hit_table.insert(nth.hashes()[0], current_kmer);                               \
 				}                                                                                  \
 			} else {                                                                               \
-				hit_table.insert(nth.hashes()[0], canonical);                                      \
+				hit_table.insert(nth.hashes()[0], current_kmer);                                   \
 			}                                                                                      \
 		}                                                                                          \
 	}

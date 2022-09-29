@@ -1,7 +1,11 @@
 #ifndef NTHITS_UTILS_HPP
 #define NTHITS_UTILS_HPP
 
+#include <stdint.h>
 #include <string>
+#include <vector>
+
+namespace nthits {
 
 static const unsigned char b2r[256] = { 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', // 0
 	                                    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N',
@@ -37,6 +41,11 @@ static const unsigned char b2r[256] = { 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 
 	                                    'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N' };
 
 void
-getCanon(std::string& bMer);
+to_canonical(std::string& bMer);
+
+void
+get_thresholds(std::vector<uint64_t> histogram, bool solid, size_t& hit_count, unsigned& hit_cap);
+
+}
 
 #endif // NTHITS_UTILS_HPP
