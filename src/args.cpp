@@ -35,7 +35,7 @@ parse_arguments(int argc, char** argv)
 
 	parser.add_argument("-o", "--out")
 	    .help("Output file's name")
-	    .default_value("");
+	    .default_value(std::string());
 
 	parser.add_argument("-s", "--seeds")
 	    .help("If specified, use spaced seeds (separate with commas, e.g. 10101,11011)");
@@ -110,6 +110,7 @@ parse_arguments(int argc, char** argv)
 		args.input_files = parser.get<std::vector<std::string> >("files");
 	} catch (std::logic_error& e) {
 		std::cerr << "No files provided" << std::endl;
+		exit(0);
 	}
 
 	return args;
