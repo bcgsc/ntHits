@@ -47,15 +47,6 @@ main(int argc, char** argv)
 		seq_reader_mode = btllib::SeqReader::Flag::SHORT_MODE;
 	}
 
-	std::string out_file_prefix;
-	if (args.out_file.empty() && args.solid) {
-		out_file_prefix = "solids";
-	} else if (args.out_file.empty() && !args.solid) {
-		out_file_prefix = "repeat";
-	} else {
-		out_file_prefix = args.out_file;
-	}
-
 	omp_set_num_threads(args.num_threads);
 
 	unsigned dbf_size, cbf_size, hit_size;
@@ -86,23 +77,23 @@ main(int argc, char** argv)
 		btllib::KmerBloomFilter bf(dbf_size / 8, args.num_hashes, args.kmer_length);
 		btllib::KmerBloomFilter hits_filter(hit_size / 8, args.num_hashes, args.kmer_length);
 		POPULATE_KMERS(hits_filter)
-		hits_filter.save(out_file_prefix + ".bf");
+		hits_filter.save(args.out_file);
 	} else if (args.out_bloom) {
 		btllib::SeedBloomFilter bf(dbf_size / 8, args.kmer_length, args.seeds, args.num_hashes);
 		btllib::SeedBloomFilter hits_filter(
 		    hit_size / 8, args.kmer_length, args.seeds, args.num_hashes);
 		POPULATE_SEEDS(hits_filter)
-		hits_filter.save(out_file_prefix + ".bf");
+		hits_filter.save(args.out_file);
 	} else if (args.seeds.empty()) {
 		btllib::KmerBloomFilter bf(dbf_size / 8, args.num_hashes, args.kmer_length);
 		nthits::HitTable hits_table(hit_size);
 		POPULATE_KMERS(hits_table)
-		hits_table.save(out_file_prefix + ".rep", args.hit_cap);
+		hits_table.save(args.out_file, args.hit_cap);
 	} else {
 		btllib::SeedBloomFilter bf(dbf_size / 8, args.kmer_length, args.seeds, args.num_hashes);
 		nthits::HitTable hits_table(hit_size);
 		POPULATE_SEEDS(hits_table)
-		hits_table.save(out_file_prefix + ".rep", args.hit_cap);
+		hits_table.save(args.out_file, args.hit_cap);
 	}
 
 	return 0;
