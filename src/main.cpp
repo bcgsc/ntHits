@@ -15,6 +15,15 @@
 #include <string>
 #include <vector>
 
+#define POPULATE(HITS_CONTAINER)                                                                   \
+	for (const auto& file_path : args.input_files) {                                               \
+		btllib::SeqReader reader(file_path, seq_reader_mode);                                      \
+		_Pragma("omp parallel shared(reader)");                                                    \
+		for (const auto& record : reader) {                                                        \
+			nthits::process(record.seq, args.hit_cap, bf, cbf, HITS_CONTAINER);                    \
+		}                                                                                          \
+	}
+
 int
 main(int argc, char** argv)
 {
@@ -23,11 +32,22 @@ main(int argc, char** argv)
 	auto args = parse_arguments(argc, argv);
 	unsigned dbf_size, cbf_size, hit_size;
 	unsigned seq_reader_mode;
+
 	if (args.long_mode) {
 		seq_reader_mode = btllib::SeqReader::Flag::LONG_MODE;
 	} else {
 		seq_reader_mode = btllib::SeqReader::Flag::SHORT_MODE;
 	}
+
+	std::string out_file_prefix;
+	if (args.out_file.empty() && args.solid) {
+		out_file_prefix = "solids";
+	} else if (args.out_file.empty() && !args.solid) {
+		out_file_prefix = "repeat";
+	} else {
+		out_file_prefix = args.out_file;
+	}
+
 	omp_set_num_threads(args.num_threads);
 
 	if (args.use_ntcard) {
@@ -89,73 +109,29 @@ main(int argc, char** argv)
 		std::cerr << "Approximate# of solid k-mers: " << args.fr << "\n";
 	}
 
-	btllib::CountingBloomFilter<nthits::cbf_counter_t> mycBF(cbf_size, args.num_hashes);
+	btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
 
-	if (args.out_bloom) {
-		std::string hbf_out_path;
-		if (args.prefix.empty() && args.solid) {
-			hbf_out_path = "solids_k" + std::to_string(args.kmer_length) + ".bf";
-		} else if (args.prefix.empty() && !args.solid) {
-			hbf_out_path = "repeat_k" + std::to_string(args.kmer_length) + ".bf";
-		} else {
-			hbf_out_path = args.prefix + "_k" + std::to_string(args.kmer_length) + ".bf";
-		}
-		if (args.seeds.empty()) {
-			btllib::KmerBloomFilter mydBF(dbf_size / 8, 3, args.kmer_length);
-			btllib::KmerBloomFilter myhBF(hit_size / 8, args.num_hashes + 1, args.kmer_length);
-			for (const auto& file_path : args.input_files) {
-				btllib::SeqReader reader(file_path, seq_reader_mode);
-#pragma omp parallel shared(reader)
-				for (const auto& record : reader) {
-					nthits::process(record.seq, args.hit_cap, mydBF, mycBF, myhBF);
-				}
-			}
-			myhBF.save(hbf_out_path);
-		} else {
-			btllib::SeedBloomFilter mydBF(dbf_size / 8, args.kmer_length, args.seeds, 3);
-			btllib::SeedBloomFilter myhBF(
-			    hit_size / 8, args.kmer_length, args.seeds, args.num_hashes + 1);
-			for (const auto& file_path : args.input_files) {
-				btllib::SeqReader reader(file_path, seq_reader_mode);
-#pragma omp parallel shared(reader)
-				for (const auto& record : reader) {
-					nthits::process(record.seq, args.hit_cap, mydBF, mycBF, myhBF);
-				}
-			}
-			myhBF.save(hbf_out_path);
-		}
+	if (args.out_bloom && args.seeds.empty()) {
+		btllib::KmerBloomFilter bf(dbf_size / 8, 3, args.kmer_length);
+		btllib::KmerBloomFilter hits_filter(hit_size / 8, args.num_hashes + 1, args.kmer_length);
+		POPULATE(hits_filter)
+		hits_filter.save(out_file_prefix + ".bf");
+	} else if (args.out_bloom) {
+		btllib::SeedBloomFilter bf(dbf_size / 8, args.kmer_length, args.seeds, 3);
+		btllib::SeedBloomFilter hits_filter(
+		    hit_size / 8, args.kmer_length, args.seeds, args.num_hashes + 1);
+		POPULATE(hits_filter)
+		hits_filter.save(out_file_prefix + ".bf");
+	} else if (args.seeds.empty()) {
+		btllib::KmerBloomFilter bf(dbf_size / 8, 3, args.kmer_length);
+		nthits::HitTable hits_table(hit_size);
+		POPULATE(hits_table)
+		hits_table.save(out_file_prefix + ".rep", args.hit_cap);
 	} else {
-		nthits::HitTable hit_table(hit_size);
-		if (args.seeds.empty()) {
-			btllib::KmerBloomFilter mydBF(dbf_size / 8, 3, args.kmer_length);
-			for (const auto& file_path : args.input_files) {
-				btllib::SeqReader reader(file_path, seq_reader_mode);
-#pragma omp parallel shared(reader)
-				for (const auto& record : reader) {
-					nthits::process(record.seq, args.hit_cap, mydBF, mycBF, hit_table);
-				}
-			}
-		} else {
-			btllib::SeedBloomFilter mydBF(dbf_size / 8, args.kmer_length, args.seeds, 3);
-			for (const auto& file_path : args.input_files) {
-				btllib::SeqReader reader(file_path, seq_reader_mode);
-#pragma omp parallel shared(reader)
-				for (const auto& record : reader) {
-					nthits::process(record.seq, args.hit_cap, mydBF, mycBF, hit_table);
-				}
-			}
-		}
-
-		std::string hit_table_path;
-		if (args.prefix.empty()) {
-			if (args.solid)
-				hit_table_path = "solids_k" + std::to_string(args.kmer_length) + ".rep";
-			else
-				hit_table_path = "repeat_k" + std::to_string(args.kmer_length) + ".rep";
-		} else {
-			hit_table_path = args.prefix + "_k" + std::to_string(args.kmer_length) + ".rep";
-		}
-		hit_table.save(hit_table_path, args.hit_cap);
+		btllib::SeedBloomFilter bf(dbf_size / 8, args.kmer_length, args.seeds, 3);
+		nthits::HitTable hits_table(hit_size);
+		POPULATE(hits_table)
+		hits_table.save(out_file_prefix + ".rep", args.hit_cap);
 	}
 
 	std::cerr << "Total time for computing repeat content in (sec): " << std::setprecision(4)

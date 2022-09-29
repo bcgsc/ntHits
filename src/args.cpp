@@ -33,9 +33,9 @@ parse_arguments(int argc, char** argv)
 	    .default_value(0U)
 	    .scan<'u', unsigned>();
 
-	parser.add_argument("-p", "--prefix")
-	    .help("Output files' prefix")
-	    .default_value(std::string("repeat"));
+	parser.add_argument("-o", "--out")
+	    .help("Output file's name")
+	    .default_value("");
 
 	parser.add_argument("-s", "--seeds")
 	    .help("If specified, use spaced seeds (separate with commas, e.g. 10101,11011)");
@@ -75,7 +75,7 @@ parse_arguments(int argc, char** argv)
 	args.num_hashes = parser.get<unsigned>("-h");
 	args.m = parser.get<unsigned>("-b");
 	args.hit_cap = parser.get<unsigned>("-c");
-	args.prefix = parser.get("-p");
+	args.out_file = parser.get("-o");
 	args.out_bloom = parser.get<bool>("--outbloom");
 	args.solid = parser.get<bool>("--solid");
 	args.long_mode = parser.get<bool>("--long-mode");

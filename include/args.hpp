@@ -18,7 +18,7 @@ struct ProgramArguments
 	unsigned bits = 7;
 	unsigned bytes = 6;
 	unsigned m = 16;
-	std::string prefix;
+	std::string out_file;
 	unsigned f0, f1, fr;
 	bool out_bloom;
 	bool solid;
