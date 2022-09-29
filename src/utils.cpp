@@ -18,33 +18,32 @@ nthits::to_canonical(std::string& bMer)
 	}
 }
 
-inline void
+void
 nthits::get_thresholds(
     std::vector<uint64_t> histogram,
     bool solid,
     size_t& hit_count,
     unsigned& hit_cap)
 {
-	unsigned min_cov, max_cov;
-	int histIndex = 2, errCov = 1;
-	while (histIndex <= 10000 && histogram[histIndex] > histogram[histIndex + 1])
-		histIndex++;
+	int hist_index = 2, err_cov = 1;
+	while (hist_index <= 10000 && histogram[hist_index] > histogram[hist_index + 1])
+		hist_index++;
 
-	errCov = histIndex > 300 ? 1 : histIndex - 1;
+	err_cov = hist_index > 300 ? 1 : hist_index - 1;
 
-	unsigned max_coverage = errCov;
-	for (unsigned i = errCov; i < 10002; i++) {
-		if (histogram[i] >= histogram[max_coverage])
-			max_coverage = i;
+	unsigned max_cov = err_cov;
+	for (unsigned i = err_cov; i < 10002; i++) {
+		if (histogram[i] >= histogram[max_cov])
+			max_cov = i;
 	}
-	max_coverage--;
+	max_cov--;
 
-	unsigned min_coverage = errCov;
-	for (unsigned i = errCov; i < max_coverage; i++) {
-		if (histogram[i] <= histogram[min_coverage])
-			min_coverage = i;
+	unsigned min_cov = err_cov;
+	for (unsigned i = err_cov; i < max_cov; i++) {
+		if (histogram[i] <= histogram[min_cov])
+			min_cov = i;
 	}
-	min_coverage--;
+	min_cov--;
 
 	if (hit_cap == 0 && solid) {
 		hit_cap = min_cov;

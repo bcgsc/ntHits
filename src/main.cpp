@@ -27,8 +27,6 @@
 int
 main(int argc, char** argv)
 {
-	double sTime = omp_get_wtime();
-
 	auto args = parse_arguments(argc, argv);
 
 	unsigned seq_reader_mode;
