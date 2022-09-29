@@ -1,32 +1,37 @@
 # ntHits
 
-ntHits is a method for identifying repeats in high-throughput DNA sequencing data. 
+ntHits is a method for identifying repeats in high-throughput DNA sequencing data.
+
+# Dependencies
+
+- C++ compiler with c++17 and OpenMP support
+- [Meson](https://mesonbuild.com/)
+- [btllib](https://github.com/bcgsc/btllib)
+
+To install the dependencies using conda, run `conda install -c bioconda -c conda-forge --file requirements.txt`.
+
+ntHits uses [argparse](https://github.com/p-ranav/argparse) for command-line argument parsing which is built-in as a submodule (no further installation required).
 
 # Installation
 
-Requirements:
-
-- [cmake](https://cmake.org/) version 3.22 or higher.
-- C++ compiler with c++17 support.
-
-To build ntHits, download the latest release and run the following command in the project's root directory to create a buildsystem in the `release` folder:
+Download the latest release and run the following command in the project's root directory to create a buildsystem in the `build` folder:
 
 ```shell
-cmake -S . -B release
+meson build
 ```
 
-Then, compile ntHits and its depedencies ([btllib](https://github.com/bcgsc/btllib) and [argparse](https://github.com/p-ranav/argparse)) using:
+Then, `cd` into the `build` folder and compile ntHits using:
 
 ```shell
-cmake --build release --target all
+ninja
 ```
 
-This will generate an executable binary `ntHits` in the `release` folder.
+This will generate an executable binary `nthits` in the `build` folder.
 
 # Usage
 
 ```
-Usage: ntHits [options] files 
+Usage: nthits [options] files 
 
 Reports the most frequent k-mers in input files.
 
@@ -38,7 +43,7 @@ Optional arguments:
 -k --kmer       k-mer length [default: 64]
 -h --hashes     Number of hashes to generate per k-mer/spaced seed [default: 4]
 -c --cutoff     k-mer cutoff threshold [required]
--p --prefix     Output files' prefix [default: "repeat"]
+-o --out     	  Output file's name [required]
 -s --seeds      If specified, use given spaced seeds separated by commas (e.g. 10101,11011)
 --outbloom      Output the most frequent k-mers in a Bloom filter [default: false]
 --solid         Output the solid k-mers (non-erroneous k-mers) [default: false]
