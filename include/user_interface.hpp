@@ -59,6 +59,6 @@ print_ntcard_results(
     const bool hit_cap_changed);
 
 void
-print_bloom_filter_stats(const double fpr, const double occupancy);
+print_bloom_filter_stats(const double fpr, const double target_fpr, const double occupancy);
 
 #endif // NTHITS_UI_HPP

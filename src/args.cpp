@@ -15,7 +15,7 @@ parse_arguments(int argc, char** argv)
 
 	parser.add_argument("-t", "--threads")
 	    .help("Number of parallel threads")
-	    .default_value(16U)
+	    .default_value(4)
 	    .scan<'u', unsigned>();
 
 	parser.add_argument("-k", "--kmer")
@@ -27,6 +27,11 @@ parse_arguments(int argc, char** argv)
 	    .help("Number of hashes to generate per k-mer/spaced seed")
 	    .default_value(4U)
 	    .scan<'u', unsigned>();
+
+	parser.add_argument("-fpr")
+	    .help("Ideal Bloom filter false positive rate")
+	    .default_value((double)0.0001)
+	    .scan<'g', double>();
 
 	parser.add_argument("-c", "--cutoff")
 	    .help("k-mer cutoff threshold")
@@ -61,7 +66,6 @@ parse_arguments(int argc, char** argv)
 	    .implicit_value(true)
 	    .nargs(0);
 
-	parser.add_argument("-b", "--bit").default_value(16U).scan<'u', unsigned>();
 	parser.add_argument("-F").scan<'u', unsigned>();
 	parser.add_argument("-f").scan<'u', unsigned>();
 	parser.add_argument("-r").scan<'u', unsigned>();
@@ -79,7 +83,7 @@ parse_arguments(int argc, char** argv)
 	args.num_threads = parser.get<unsigned>("-t");
 	args.kmer_length = parser.get<unsigned>("-k");
 	args.num_hashes = parser.get<unsigned>("-h");
-	args.m = parser.get<unsigned>("-b");
+	args.fpr = parser.get<double>("-fpr");
 	args.hit_cap = parser.get<unsigned>("-c");
 	args.out_file = parser.get("-o");
 	args.out_bloom = parser.get<bool>("--outbloom");

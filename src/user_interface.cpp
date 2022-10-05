@@ -53,12 +53,13 @@ print_args(const ProgramArguments& args)
 		for (const auto& seed : args.seeds) {
 			std::cout << "  - " << seed << std::endl;
 		}
+		std::cout << "Hashes per seed          (-h): " << args.num_hashes << std::endl;
 	} else {
-		std::cout << "k-mer length             (-k):" << args.kmer_length << std::endl;
+		std::cout << "k-mer length             (-k): " << args.kmer_length << std::endl;
+		std::cout << "Hashes per k-mer         (-h): " << args.num_hashes << std::endl;
 	}
-	std::cout << "Hashes per k-mer/seed    (-h): " << args.num_hashes << std::endl;
 	if (args.hit_cap > 0) {
-		std::cout << "Error k-mer threshold    (-c): " << args.hit_cap << std::endl;
+		std::cout << "Filter threshold         (-c): " << args.hit_cap << std::endl;
 	}
 	std::cout << "Number of threads        (-t): " << args.num_threads << std::endl;
 	std::cout << "Optimize file reading for long sequences (--long-mode): "
@@ -66,16 +67,16 @@ print_args(const ProgramArguments& args)
 	std::cout << "Output mode ";
 	if (args.out_bloom && args.solid) {
 		std::cout << "(\033[1;34m--out-bloom\033[0m/\033[1;34m--solid\033[0m): ";
-		std::cout << "Solid k-mers in a Bloom filter" << std::endl;
+		std::cout << "Non-erroneous k-mers in a Bloom filter" << std::endl;
 	} else if (args.out_bloom) {
 		std::cout << "(\033[1;34m--out-bloom\033[0m/--solid): ";
-		std::cout << "Error k-mers in a Bloom filter" << std::endl;
+		std::cout << "Repeated k-mers in a Bloom filter" << std::endl;
 	} else if (args.solid) {
 		std::cout << "(--out-bloom/\033[1;34m--solid\033[0m): ";
-		std::cout << "Solid k-mers and counts in plain text" << std::endl;
+		std::cout << "Non-erroneous k-mers and counts in a table" << std::endl;
 	} else {
 		std::cout << "(--out-bloom/--solid): ";
-		std::cout << "Error k-mers and counts in plain text" << std::endl;
+		std::cout << "Repeated k-mers and counts in a table" << std::endl;
 	}
 	std::cout << std::endl;
 }
@@ -96,13 +97,17 @@ print_ntcard_results(
 }
 
 void
-print_bloom_filter_stats(const double fpr, const double occupancy)
+print_bloom_filter_stats(const double fpr, const double target_fpr, const double occupancy)
 {
-	if (fpr > 0.01) {
+	if (fpr > target_fpr * 25) {
 		std::cout << "  - Actual false positive rate (FPR): \033[1;31m" << fpr << "\033[0m"
 		          << std::endl;
+	} else if (fpr > target_fpr * 10) {
+		std::cout << "  - Actual false positive rate (FPR): \033[1;33m" << fpr << "\033[0m"
+		          << std::endl;
 	} else {
-		std::cout << "  - Actual false positive rate (FPR): " << fpr << std::endl;
+		std::cout << "  - Actual false positive rate (FPR): \033[1;32m" << fpr << "\033[0m"
+		          << std::endl;
 	}
 	std::cout << "  - Bloom filter occupancy: " << occupancy << std::endl;
 }

@@ -14,10 +14,10 @@ struct ProgramArguments
 	unsigned num_threads;
 	unsigned kmer_length;
 	unsigned num_hashes;
+	double fpr;
 	unsigned hit_cap = 0;
 	unsigned bits = 7;
 	unsigned bytes = 6;
-	unsigned m = 16;
 	std::string out_file;
 	unsigned verbosity;
 	unsigned f0, f1, fr;

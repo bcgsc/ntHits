@@ -81,13 +81,21 @@ main(int argc, char** argv)
 			print_ntcard_results(hit_count, hist[1], args.hit_cap, hit_cap_changed);
 		}
 
-		dbf_size = args.bits * hist[1];
-		cbf_size = args.bytes * (hist[1] - hist[2]);
-		hit_size = args.out_bloom ? hit_count * args.m : hit_count * 3;
+		dbf_size = nthits::get_bloom_filter_size(hist[1], args.seeds.size(), args.fpr);
+		cbf_size = nthits::get_bloom_filter_size(hist[1] - hist[2], args.seeds.size(), args.fpr);
+		if (args.out_bloom) {
+			hit_size = nthits::get_bloom_filter_size(hit_count, args.seeds.size(), args.fpr);
+		} else {
+			hit_size = hit_count * 3;
+		}
+		if (args.verbosity > 0 && args.out_bloom) {
+			std::cout << "- Target false positive rate (-fpr) : " << args.fpr << std::endl;
+			std::cout << "- Output Bloom filter size  (bytes) : " << hit_size << std::endl;
+		}
 	} else {
-		dbf_size = args.bits * args.f0;
-		cbf_size = args.bytes * (args.f0 - args.f1);
-		hit_size = args.m * args.fr;
+		dbf_size = nthits::get_bloom_filter_size(args.f0, args.seeds.size(), args.fpr);
+		cbf_size = nthits::get_bloom_filter_size(args.f0 - args.f1, args.seeds.size(), args.fpr);
+		hit_size = nthits::get_bloom_filter_size(args.fr, args.seeds.size(), args.fpr);
 	}
 
 	std::cout << "Running ntHits... " << std::flush;
@@ -96,7 +104,7 @@ main(int argc, char** argv)
 	double bf_fpr = 0, bf_occ = 0;
 	if (args.out_bloom && args.seeds.empty()) {
 		btllib::KmerBloomFilter bf(dbf_size / 8, args.num_hashes, args.kmer_length);
-		btllib::KmerBloomFilter hits_filter(hit_size / 8, args.num_hashes, args.kmer_length);
+		btllib::KmerBloomFilter hits_filter(hit_size, args.num_hashes, args.kmer_length);
 		POPULATE_KMERS(hits_filter)
 		hits_filter.save(args.out_file);
 		bf_fpr = hits_filter.get_fpr();
@@ -104,7 +112,7 @@ main(int argc, char** argv)
 	} else if (args.out_bloom) {
 		btllib::SeedBloomFilter bf(dbf_size / 8, args.kmer_length, args.seeds, args.num_hashes);
 		btllib::SeedBloomFilter hits_filter(
-		    hit_size / 8, args.kmer_length, args.seeds, args.num_hashes);
+		    hit_size, args.kmer_length, args.seeds, args.num_hashes);
 		POPULATE_SEEDS(hits_filter)
 		hits_filter.save(args.out_file);
 		bf_fpr = hits_filter.get_fpr();
@@ -123,7 +131,7 @@ main(int argc, char** argv)
 	timer.stop();
 	timer.print_done();
 	if (args.verbosity > 0) {
-		print_bloom_filter_stats(bf_fpr, bf_occ);
+		print_bloom_filter_stats(bf_fpr, args.fpr, bf_occ);
 	}
 
 	return 0;

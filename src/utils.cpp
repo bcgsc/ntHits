@@ -1,5 +1,7 @@
 #include "utils.hpp"
 
+#include <math.h>
+
 void
 nthits::to_canonical(std::string& bmer)
 {
@@ -54,4 +56,11 @@ nthits::get_thresholds(
 	hit_count = histogram[1];
 	for (unsigned i = 2; i <= hit_cap + 1; i++)
 		hit_count -= histogram[i];
+}
+
+size_t
+nthits::get_bloom_filter_size(const size_t num_elements, const int num_seeds, const double fpr)
+{
+	size_t m = ceil(((double)num_elements * abs(log(fpr))) / (pow(log(2.0), 2.0)));
+	return m * std::max(1, num_seeds);
 }

@@ -46,6 +46,9 @@ to_canonical(std::string& bMer);
 void
 get_thresholds(std::vector<uint64_t> histogram, bool solid, size_t& hit_count, unsigned& hit_cap);
 
+size_t
+get_bloom_filter_size(const size_t num_elements, const int num_seeds, const double fpr);
+
 }
 
 #endif // NTHITS_UTILS_HPP
