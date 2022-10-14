@@ -20,7 +20,7 @@
 	for (const auto& file_path : args.input_files) {                                               \
 		btllib::SeqReader reader(file_path, seq_reader_mode);                                      \
 		_Pragma("omp parallel shared(reader)");                                                    \
-		for (const auto& record : reader) {                                                        \
+		for (const auto record : reader) {                                                         \
 			if (record.seq.size() < args.kmer_length) {                                            \
 				continue;                                                                          \
 			}                                                                                      \
@@ -32,11 +32,11 @@
 	for (const auto& file_path : args.input_files) {                                               \
 		btllib::SeqReader reader(file_path, seq_reader_mode);                                      \
 		_Pragma("omp parallel shared(reader)");                                                    \
-		for (const auto& record : reader) {                                                        \
-			if (record.seq.size() < args.kmer_length) {                                            \
-				continue;                                                                          \
-			}                                                                                      \
+		for (const auto record : reader) {                                                         \
 			for (const auto& seed : args.seeds) {                                                  \
+				if (record.seq.size() < args.kmer_length) {                                        \
+					continue;                                                                      \
+				}                                                                                  \
 				nthits::process(record.seq, seed, args.hit_cap, bf, cbf, HITS_CONTAINER);          \
 			}                                                                                      \
 		}                                                                                          \
@@ -70,7 +70,8 @@ main(int argc, char** argv)
 		ntcard::NtCard ntc(args.kmer_length);
 		for (const auto& file : args.input_files) {
 			btllib::SeqReader reader(file, seq_reader_mode);
-			for (const auto& record : reader) {
+#pragma omp parallel shared(reader)
+			for (const auto record : reader) {
 				ntc.process(record.seq);
 			}
 		}
