@@ -21,6 +21,9 @@
 		btllib::SeqReader reader(file_path, seq_reader_mode);                                      \
 		_Pragma("omp parallel shared(reader)");                                                    \
 		for (const auto& record : reader) {                                                        \
+			if (record.seq.size() < args.kmer_length) {                                            \
+				continue;                                                                          \
+			}                                                                                      \
 			nthits::process(record.seq, args.hit_cap, bf, cbf, HITS_CONTAINER);                    \
 		}                                                                                          \
 	}
@@ -30,6 +33,9 @@
 		btllib::SeqReader reader(file_path, seq_reader_mode);                                      \
 		_Pragma("omp parallel shared(reader)");                                                    \
 		for (const auto& record : reader) {                                                        \
+			if (record.seq.size() < args.kmer_length) {                                            \
+				continue;                                                                          \
+			}                                                                                      \
 			for (const auto& seed : args.seeds) {                                                  \
 				nthits::process(record.seq, seed, args.hit_cap, bf, cbf, HITS_CONTAINER);          \
 			}                                                                                      \
