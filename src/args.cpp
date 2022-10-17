@@ -25,11 +25,15 @@ parse_arguments(int argc, char** argv)
 
 	parser.add_argument("-h", "--hashes")
 	    .help("Number of hashes to generate per k-mer/spaced seed")
-	    .default_value(4U)
+	    .default_value(3U)
 	    .scan<'u', unsigned>();
 
+	parser.add_argument("-f", "--frequencies")
+	    .help("Frequency histogram file (e.g. from ntCard)")
+	    .required();
+
 	parser.add_argument("-fpr")
-	    .help("Ideal Bloom filter false positive rate")
+	    .help("Target Bloom filter false positive rate")
 	    .default_value((double)0.0001)
 	    .scan<'g', double>();
 
@@ -66,10 +70,6 @@ parse_arguments(int argc, char** argv)
 	    .implicit_value(true)
 	    .nargs(0);
 
-	parser.add_argument("-F").scan<'u', unsigned>();
-	parser.add_argument("-f").scan<'u', unsigned>();
-	parser.add_argument("-r").scan<'u', unsigned>();
-
 	parser.add_argument("files").help("Input files").required().remaining();
 
 	try {
@@ -83,29 +83,13 @@ parse_arguments(int argc, char** argv)
 	args.num_threads = parser.get<unsigned>("-t");
 	args.kmer_length = parser.get<unsigned>("-k");
 	args.num_hashes = parser.get<unsigned>("-h");
+	args.histogram_path = parser.get("-f");
 	args.fpr = parser.get<double>("-fpr");
-	args.hit_cap = parser.get<unsigned>("-c");
+	args.thresh_min = parser.get<unsigned>("-c");
 	args.out_file = parser.get("-o");
 	args.out_bloom = parser.get<bool>("--outbloom");
 	args.solid = parser.get<bool>("--solid");
 	args.long_mode = parser.get<bool>("--long-mode");
-
-	args.use_ntcard = true;
-
-	if (parser.is_used("-F")) {
-		args.f0 = parser.get<unsigned>("-F");
-		args.use_ntcard = false;
-	}
-
-	if (parser.is_used("-r")) {
-		args.fr = parser.get<unsigned>("-r");
-		args.use_ntcard = false;
-	}
-
-	if (parser.is_used("-f")) {
-		args.f1 = parser.get<unsigned>("-f");
-		args.use_ntcard = false;
-	}
 
 	if (parser.is_used("-s")) {
 		std::istringstream ss(parser.get("-s"));

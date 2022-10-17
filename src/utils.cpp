@@ -28,13 +28,14 @@ nthits::get_thresholds(
     unsigned& hit_cap)
 {
 	int hist_index = 2, err_cov = 1;
-	while (hist_index <= 10000 && histogram[hist_index] > histogram[hist_index + 1])
+	while (hist_index <= (int)histogram.size() - 2 &&
+	       histogram[hist_index] > histogram[hist_index + 1])
 		hist_index++;
 
 	err_cov = hist_index > 300 ? 1 : hist_index - 1;
 
 	unsigned max_cov = err_cov;
-	for (unsigned i = err_cov; i < 10002; i++) {
+	for (unsigned i = err_cov; i < histogram.size(); i++) {
 		if (histogram[i] >= histogram[max_cov])
 			max_cov = i;
 	}
@@ -59,8 +60,9 @@ nthits::get_thresholds(
 }
 
 size_t
-nthits::get_bloom_filter_size(const size_t num_elements, const int num_seeds, const double fpr)
+nthits::calc_bf_size(double num_elements, double num_hashes, int num_seeds, double fpr)
 {
-	size_t m = ceil(((double)num_elements * abs(log(fpr))) / (pow(log(2.0), 2.0)));
+	double r = -num_hashes / log(1.0 - exp(log(fpr) / num_hashes));
+	size_t m = ceil(num_elements * r);
 	return m * std::max(1, num_seeds);
 }

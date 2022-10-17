@@ -52,11 +52,13 @@ void
 print_args(const ProgramArguments& args);
 
 void
-print_ntcard_results(
-    const size_t hit_count,
-    const uint64_t num_distinct,
-    const unsigned hit_cap,
-    const bool hit_cap_changed);
+print_updated_params(
+    size_t hit_count,
+    uint64_t num_distinct,
+    unsigned hit_cap,
+    bool hit_cap_changed,
+    bool out_bloom,
+    size_t hit_size);
 
 void
 print_bloom_filter_stats(const double fpr, const double target_fpr, const double occupancy);

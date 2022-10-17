@@ -15,16 +15,13 @@ struct ProgramArguments
 	unsigned kmer_length;
 	unsigned num_hashes;
 	double fpr;
-	unsigned hit_cap = 0;
-	unsigned bits = 7;
-	unsigned bytes = 6;
+	unsigned thresh_min = 0;
 	std::string out_file;
 	unsigned verbosity;
-	unsigned f0, f1, fr;
 	bool out_bloom;
 	bool solid;
 	bool long_mode;
-	bool use_ntcard;
+	std::string histogram_path;
 	std::vector<std::string> input_files;
 	std::vector<std::string> seeds;
 };

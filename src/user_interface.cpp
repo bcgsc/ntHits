@@ -48,50 +48,56 @@ print_args(const ProgramArguments& args)
 	for (const auto& file : args.input_files) {
 		std::cout << "  - " << file << std::endl;
 	}
+	std::cout << "Sequence reading mode: " << (args.long_mode ? "LONG" : "SHORT") << std::endl;
 	if (args.seeds.size() > 0) {
-		std::cout << "Spaced seed patterns (-s):" << std::endl;
+		std::cout << "[-s] Spaced seed patterns:" << std::endl;
 		for (const auto& seed : args.seeds) {
 			std::cout << "  - " << seed << std::endl;
 		}
-		std::cout << "Hashes per seed          (-h): " << args.num_hashes << std::endl;
+		std::cout << "[-h]   Hashes per seed   : " << args.num_hashes << std::endl;
 	} else {
-		std::cout << "k-mer length             (-k): " << args.kmer_length << std::endl;
-		std::cout << "Hashes per k-mer         (-h): " << args.num_hashes << std::endl;
+		std::cout << "[-k]   k-mer length      : " << args.kmer_length << std::endl;
+		std::cout << "[-h]   Hashes per k-mer  : " << args.num_hashes << std::endl;
 	}
-	if (args.hit_cap > 0) {
-		std::cout << "Filter threshold         (-c): " << args.hit_cap << std::endl;
+	if (args.thresh_min > 0) {
+		std::cout << "[-c]   Filter threshold  : " << args.thresh_min << std::endl;
 	}
-	std::cout << "Number of threads        (-t): " << args.num_threads << std::endl;
-	std::cout << "Optimize file reading for long sequences (--long-mode): "
-	          << (args.long_mode ? "YES" : "NO") << std::endl;
-	std::cout << "Output mode ";
+	if (args.fpr > 0 && args.out_bloom) {
+		std::cout << "[-fpr] Bloom filter FPR  : " << args.fpr << std::endl;
+	}
+	std::cout << "[-t]   Number of threads : " << args.num_threads << std::endl;
 	if (args.out_bloom && args.solid) {
-		std::cout << "(\033[1;34m--out-bloom\033[0m/\033[1;34m--solid\033[0m): ";
+		std::cout << "[\033[1;34m--out-bloom\033[0m/\033[1;34m--solid\033[0m]    : ";
 		std::cout << "Non-erroneous k-mers in a Bloom filter" << std::endl;
 	} else if (args.out_bloom) {
-		std::cout << "(\033[1;34m--out-bloom\033[0m/--solid): ";
+		std::cout << "[\033[1;34m--out-bloom\033[0m/--solid]    : ";
 		std::cout << "Repeated k-mers in a Bloom filter" << std::endl;
 	} else if (args.solid) {
-		std::cout << "(--out-bloom/\033[1;34m--solid\033[0m): ";
+		std::cout << "[--out-bloom/\033[1;34m--solid\033[0m]    : ";
 		std::cout << "Non-erroneous k-mers and counts in a table" << std::endl;
 	} else {
-		std::cout << "(--out-bloom/--solid): ";
+		std::cout << "[--out-bloom/--solid]    : ";
 		std::cout << "Repeated k-mers and counts in a table" << std::endl;
 	}
 	std::cout << std::endl;
 }
 
 void
-print_ntcard_results(
-    const size_t hit_count,
-    const uint64_t num_distinct,
-    const unsigned hit_cap,
-    const bool hit_cap_changed)
+print_updated_params(
+    size_t hit_count,
+    uint64_t num_distinct,
+    unsigned hit_cap,
+    bool hit_cap_changed,
+    bool out_bloom,
+    size_t hit_size)
 {
-	std::cout << "  - Estimated number of distinct k-mers  : " << num_distinct << std::endl;
-	std::cout << "  - Estimated number of solid k-mers     : " << hit_count << std::endl;
+	std::cout << "- Number of distinct k-mers : " << num_distinct << std::endl;
+	std::cout << "- Number of filtered k-mers : " << hit_count << std::endl;
 	if (hit_cap_changed) {
-		std::cout << "  - Estimated error k-mer threshold (-c) : " << hit_cap << std::endl;
+		std::cout << "- Estimated error k-mer threshold : " << hit_cap << std::endl;
+	}
+	if (out_bloom) {
+		std::cout << "- Output Bloom filter size : " << hit_size << std::endl;
 	}
 	std::cout << std::endl;
 }
