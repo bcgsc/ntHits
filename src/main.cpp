@@ -32,8 +32,8 @@ load_histogram(const std::string& path)
 #define POPULATE_KMERS(HITS_CONTAINER)                                                             \
 	for (const auto& file_path : args.input_files) {                                               \
 		btllib::SeqReader reader(file_path, seq_reader_mode);                                      \
-		_Pragma("omp parallel shared(reader)");                                                    \
-		for (const auto record : reader) {                                                         \
+		_Pragma("omp parallel shared(reader)") for (const auto record : reader)                    \
+		{                                                                                          \
 			if (record.seq.size() < args.kmer_length) {                                            \
 				continue;                                                                          \
 			}                                                                                      \
@@ -44,8 +44,8 @@ load_histogram(const std::string& path)
 #define POPULATE_SEEDS(HITS_CONTAINER)                                                             \
 	for (const auto& file_path : args.input_files) {                                               \
 		btllib::SeqReader reader(file_path, seq_reader_mode);                                      \
-		_Pragma("omp parallel shared(reader)");                                                    \
-		for (const auto record : reader) {                                                         \
+		_Pragma("omp parallel shared(reader)") for (const auto record : reader)                    \
+		{                                                                                          \
 			for (const auto& seed : args.seeds) {                                                  \
 				if (record.seq.size() < args.kmer_length) {                                        \
 					continue;                                                                      \
@@ -93,12 +93,7 @@ main(int argc, char** argv)
 	}
 	if (args.verbosity > 0) {
 		print_updated_params(
-		    hit_count,
-		    hist[1],
-		    args.thresh_min,
-		    hit_cap_changed,
-		    args.out_bloom,
-		    hit_size);
+		    hit_count, hist[1], args.thresh_min, hit_cap_changed, args.out_bloom, hit_size);
 	}
 
 	Timer timer;
