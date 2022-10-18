@@ -29,7 +29,7 @@ load_histogram(const std::string& path)
 	return hist;
 }
 
-#define POPULATE_KMERS(HITS_CONTAINER)                                                             \
+#define POPULATE_KMERS(BF, CBF, HITS)                                                              \
 	for (const auto& file_path : args.input_files) {                                               \
 		btllib::SeqReader reader(file_path, seq_reader_mode);                                      \
 		_Pragma("omp parallel shared(reader)") for (const auto record : reader)                    \
@@ -37,11 +37,11 @@ load_histogram(const std::string& path)
 			if (record.seq.size() < args.kmer_length) {                                            \
 				continue;                                                                          \
 			}                                                                                      \
-			nthits::process(record.seq, args.thresh_min, bf, cbf, HITS_CONTAINER);                 \
+			nthits::process(record.seq, args.thresh_min, BF, CBF, HITS);                           \
 		}                                                                                          \
 	}
 
-#define POPULATE_SEEDS(HITS_CONTAINER)                                                             \
+#define POPULATE_SEEDS(BF, CBF, HITS)                                                              \
 	for (const auto& file_path : args.input_files) {                                               \
 		btllib::SeqReader reader(file_path, seq_reader_mode);                                      \
 		_Pragma("omp parallel shared(reader)") for (const auto record : reader)                    \
@@ -50,7 +50,7 @@ load_histogram(const std::string& path)
 				if (record.seq.size() < args.kmer_length) {                                        \
 					continue;                                                                      \
 				}                                                                                  \
-				nthits::process(record.seq, seed, args.thresh_min, bf, cbf, HITS_CONTAINER);       \
+				nthits::process(record.seq, seed, args.thresh_min, BF, CBF, HITS);                 \
 			}                                                                                      \
 		}                                                                                          \
 	}
@@ -97,40 +97,48 @@ main(int argc, char** argv)
 	}
 
 	Timer timer;
-	std::cout << "Running ntHits... " << std::flush;
-	timer.start();
-	btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
-	double bf_fpr = 0, bf_occ = 0;
 	if (args.out_bloom && args.seeds.empty()) {
-		btllib::KmerBloomFilter bf(dbf_size, args.num_hashes, args.kmer_length);
-		btllib::KmerBloomFilter hits_filter(hit_size, args.num_hashes, args.kmer_length);
-		POPULATE_KMERS(hits_filter)
-		hits_filter.save(args.out_file);
-		bf_fpr = hits_filter.get_fpr();
-		bf_occ = hits_filter.get_occupancy();
+		TIME_EXECUTION(
+		    "Initializing Bloom filters",
+		    timer,
+		    btllib::KmerBloomFilter bf(dbf_size, args.num_hashes, args.kmer_length);
+		    btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
+		    btllib::KmerBloomFilter hits(hit_size, args.num_hashes, args.kmer_length);)
+		TIME_EXECUTION("Processing k-mers", timer, POPULATE_KMERS(bf, cbf, hits))
+		TIME_EXECUTION("Saving Bloom filter", timer, hits.save(args.out_file);)
+		if (args.verbosity > 0) {
+			print_bloom_filter_stats(hits.get_fpr(), args.fpr, hits.get_occupancy());
+		}
 	} else if (args.out_bloom) {
-		btllib::SeedBloomFilter bf(dbf_size, args.kmer_length, args.seeds, args.num_hashes);
-		btllib::SeedBloomFilter hits_filter(
-		    hit_size, args.kmer_length, args.seeds, args.num_hashes);
-		POPULATE_SEEDS(hits_filter)
-		hits_filter.save(args.out_file);
-		bf_fpr = hits_filter.get_fpr();
-		bf_occ = hits_filter.get_occupancy();
+		TIME_EXECUTION(
+		    "Initializing Bloom filters",
+		    timer,
+		    btllib::SeedBloomFilter bf(dbf_size, args.kmer_length, args.seeds, args.num_hashes);
+		    btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
+		    btllib::SeedBloomFilter hits(hit_size, args.kmer_length, args.seeds, args.num_hashes);)
+		TIME_EXECUTION("Processing spaced seeds", timer, POPULATE_SEEDS(bf, cbf, hits))
+		TIME_EXECUTION("Saving Bloom filter", timer, hits.save(args.out_file);)
+		if (args.verbosity > 0) {
+			print_bloom_filter_stats(hits.get_fpr(), args.fpr, hits.get_occupancy());
+		}
 	} else if (args.seeds.empty()) {
-		btllib::KmerBloomFilter bf(dbf_size, args.num_hashes, args.kmer_length);
-		nthits::HitTable hits_table(hit_size);
-		POPULATE_KMERS(hits_table)
-		hits_table.save(args.out_file, args.thresh_min);
+		TIME_EXECUTION(
+		    "Initializing Bloom filters and hit table",
+		    timer,
+		    btllib::KmerBloomFilter bf(dbf_size, args.num_hashes, args.kmer_length);
+		    btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
+		    nthits::HitTable hits(hit_size);)
+		TIME_EXECUTION("Processing k-mers", timer, POPULATE_KMERS(bf, cbf, hits))
+		TIME_EXECUTION("Saving hits table", timer, hits.save(args.out_file, args.thresh_min);)
 	} else {
-		btllib::SeedBloomFilter bf(dbf_size, args.kmer_length, args.seeds, args.num_hashes);
-		nthits::HitTable hits_table(hit_size);
-		POPULATE_SEEDS(hits_table)
-		hits_table.save(args.out_file, args.thresh_min);
-	}
-	timer.stop();
-	timer.print_done();
-	if (args.verbosity > 0) {
-		print_bloom_filter_stats(bf_fpr, args.fpr, bf_occ);
+		TIME_EXECUTION(
+		    "Initializing Bloom filters and hit table",
+		    timer,
+		    btllib::SeedBloomFilter bf(dbf_size, args.kmer_length, args.seeds, args.num_hashes);
+		    btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
+		    nthits::HitTable hits(hit_size);)
+		TIME_EXECUTION("Processing spaced seeds", timer, POPULATE_SEEDS(bf, cbf, hits))
+		TIME_EXECUTION("Saving hits table", timer, hits.save(args.out_file, args.thresh_min);)
 	}
 
 	return 0;

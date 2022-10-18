@@ -13,6 +13,12 @@
 	"| | | | |_/ __  /| | |_\\__ \\     \n"                                                        \
 	"|_| |_|\\__\\/ /_/ |_|\\__|___/    "
 
+#define TIME_EXECUTION(MESSAGE, TIMER, CODE)                                                       \
+	std::cout << MESSAGE << "... " << std::flush;                                                  \
+	TIMER.start();                                                                                 \
+	CODE TIMER.stop();                                                                             \
+	TIMER.print_done();
+
 class Timer
 {
   private:
@@ -55,7 +61,7 @@ class Timer
 		std::cout << "\033[1;32m"
 		          << "DONE"
 		          << "\033[0m"
-		          << "(" << this->to_string() << ")" << std::endl;
+		          << " (" << this->to_string() << ")" << std::endl;
 	}
 };
 
