@@ -19,6 +19,26 @@
 	CODE TIMER.stop();                                                                             \
 	TIMER.print_done();
 
+enum Color
+{
+	FG_RED = 31,
+	FG_GREEN = 32,
+	FG_BLUE = 34,
+	FG_YELLOW = 33,
+	FG_DEFAULT = 39,
+	BG_RED = 41,
+	BG_GREEN = 42,
+	BG_BLUE = 44,
+	BG_YELLOW = 43,
+	BG_DEFAULT = 49
+};
+
+inline std::string
+color(const std::string& text, Color color)
+{
+	return "\033[1;" + std::to_string(color) + "m" + text + "\033[0m";
+}
+
 class Timer
 {
   private:
@@ -58,10 +78,8 @@ class Timer
 	 */
 	void print_done() const
 	{
-		std::cout << "\033[1;32m"
-		          << "DONE"
-		          << "\033[0m"
-		          << " (" << this->to_string() << ")" << std::endl;
+		std::cout << color("DONE", Color::FG_GREEN) << " (" << this->to_string() << ")"
+		          << std::endl;
 	}
 };
 
@@ -96,17 +114,16 @@ print_args(const ProgramArguments& args)
 		std::cout << "[-p] Bloom filter FPR    : " << args.fpr << std::endl;
 	}
 	std::cout << "[-t] Number of threads   : " << args.num_threads << std::endl;
+	std::string out_bloom = args.out_bloom ? color("--out-bloom", Color::FG_BLUE) : "--out-bloom";
+	std::string solid = args.solid ? color("--solid", Color::FG_BLUE) : "--solid";
+	std::cout << "[" << out_bloom << "/" << solid << "]    : ";
 	if (args.out_bloom && args.solid) {
-		std::cout << "[\033[1;34m--out-bloom\033[0m/\033[1;34m--solid\033[0m]    : ";
 		std::cout << "Non-erroneous k-mers in a Bloom filter" << std::endl;
 	} else if (args.out_bloom) {
-		std::cout << "[\033[1;34m--out-bloom\033[0m/--solid]    : ";
 		std::cout << "Repeated k-mers in a Bloom filter" << std::endl;
 	} else if (args.solid) {
-		std::cout << "[--out-bloom/\033[1;34m--solid\033[0m]    : ";
 		std::cout << "Non-erroneous k-mers and counts in a table" << std::endl;
 	} else {
-		std::cout << "[--out-bloom/--solid]    : ";
 		std::cout << "Repeated k-mers and counts in a table" << std::endl;
 	}
 	std::cout << std::endl;
@@ -135,16 +152,15 @@ print_updated_params(
 void
 print_bloom_filter_stats(const double fpr, const double target_fpr, const double occupancy)
 {
+	std::string fpr_str;
 	if (fpr > target_fpr * 25) {
-		std::cout << "  - Actual false positive rate (FPR): \033[1;31m" << fpr << "\033[0m"
-		          << std::endl;
+		fpr_str = color(std::to_string(fpr), Color::FG_RED);
 	} else if (fpr > target_fpr * 10) {
-		std::cout << "  - Actual false positive rate (FPR): \033[1;33m" << fpr << "\033[0m"
-		          << std::endl;
+		fpr_str = color(std::to_string(fpr), Color::FG_YELLOW);
 	} else {
-		std::cout << "  - Actual false positive rate (FPR): \033[1;32m" << fpr << "\033[0m"
-		          << std::endl;
+		fpr_str = std::to_string(fpr);
 	}
+	std::cout << "  - Actual false positive rate (FPR): " << fpr_str << std::endl;
 	std::cout << "  - Bloom filter occupancy: " << occupancy << std::endl;
 }
 

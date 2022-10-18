@@ -39,7 +39,7 @@ parse_arguments(int argc, char** argv)
 
 	parser.add_argument("-t", "--threads")
 	    .help("Number of parallel threads")
-	    .default_value(4)
+	    .default_value(4U)
 	    .scan<'u', unsigned>();
 
 	parser.add_argument("-k", "--kmer")
@@ -71,7 +71,7 @@ parse_arguments(int argc, char** argv)
 	parser.add_argument("-s", "--seeds")
 	    .help("If specified, use spaced seeds (separate with commas, e.g. 10101,11011)");
 
-	parser.add_argument("--outbloom")
+	parser.add_argument("--out-bloom")
 	    .help("Output the most frequent k-mers in a Bloom filter")
 	    .default_value(false)
 	    .implicit_value(true);
@@ -111,7 +111,7 @@ parse_arguments(int argc, char** argv)
 	args.fpr = parser.get<double>("-p");
 	args.thresh_min = parser.get<unsigned>("-c");
 	args.out_file = parser.get("-o");
-	args.out_bloom = parser.get<bool>("--outbloom");
+	args.out_bloom = parser.get<bool>("--out-bloom");
 	args.solid = parser.get<bool>("--solid");
 	args.long_mode = parser.get<bool>("--long-mode");
 
