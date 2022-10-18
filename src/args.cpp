@@ -32,7 +32,7 @@ parse_arguments(int argc, char** argv)
 	    .help("Frequency histogram file (e.g. from ntCard)")
 	    .required();
 
-	parser.add_argument("-fpr")
+	parser.add_argument("-p")
 	    .help("Target Bloom filter false positive rate")
 	    .default_value((double)0.0001)
 	    .scan<'g', double>();
@@ -84,7 +84,7 @@ parse_arguments(int argc, char** argv)
 	args.kmer_length = parser.get<unsigned>("-k");
 	args.num_hashes = parser.get<unsigned>("-h");
 	args.histogram_path = parser.get("-f");
-	args.fpr = parser.get<double>("-fpr");
+	args.fpr = parser.get<double>("-p");
 	args.thresh_min = parser.get<unsigned>("-c");
 	args.out_file = parser.get("-o");
 	args.out_bloom = parser.get<bool>("--outbloom");

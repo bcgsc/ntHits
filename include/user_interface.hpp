@@ -15,8 +15,8 @@
 class Timer
 {
   private:
-	std::clock_t t_start;
-	std::clock_t t_end;
+	std::chrono::time_point<std::chrono::system_clock> t_start;
+	std::chrono::time_point<std::chrono::system_clock> t_end;
 
   public:
 	/**

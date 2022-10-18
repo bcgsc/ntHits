@@ -5,19 +5,20 @@
 void
 Timer::start()
 {
-	this->t_start = clock();
+	this->t_start = std::chrono::system_clock::now();
 }
 
 void
 Timer::stop()
 {
-	this->t_end = clock();
+	this->t_end = std::chrono::system_clock::now();
 }
 
 long double
 Timer::elapsed_seconds() const
 {
-	return (long double)(this->t_end - this->t_start) / CLOCKS_PER_SEC;
+	std::chrono::duration<double> elapsed = t_end - t_start;
+	return elapsed.count();
 }
 
 std::string
@@ -48,24 +49,24 @@ print_args(const ProgramArguments& args)
 	for (const auto& file : args.input_files) {
 		std::cout << "  - " << file << std::endl;
 	}
-	std::cout << "Sequence reading mode: " << (args.long_mode ? "LONG" : "SHORT") << std::endl;
+	std::cout << "Sequence reading mode    : " << (args.long_mode ? "LONG" : "SHORT") << std::endl;
 	if (args.seeds.size() > 0) {
 		std::cout << "[-s] Spaced seed patterns:" << std::endl;
 		for (const auto& seed : args.seeds) {
 			std::cout << "  - " << seed << std::endl;
 		}
-		std::cout << "[-h]   Hashes per seed   : " << args.num_hashes << std::endl;
+		std::cout << "[-h] Hashes per seed     : " << args.num_hashes << std::endl;
 	} else {
-		std::cout << "[-k]   k-mer length      : " << args.kmer_length << std::endl;
-		std::cout << "[-h]   Hashes per k-mer  : " << args.num_hashes << std::endl;
+		std::cout << "[-k] k-mer length        : " << args.kmer_length << std::endl;
+		std::cout << "[-h] Hashes per k-mer    : " << args.num_hashes << std::endl;
 	}
 	if (args.thresh_min > 0) {
-		std::cout << "[-c]   Filter threshold  : " << args.thresh_min << std::endl;
+		std::cout << "[-c] Filter threshold    : " << args.thresh_min << std::endl;
 	}
 	if (args.fpr > 0 && args.out_bloom) {
-		std::cout << "[-fpr] Bloom filter FPR  : " << args.fpr << std::endl;
+		std::cout << "[-p] Bloom filter FPR    : " << args.fpr << std::endl;
 	}
-	std::cout << "[-t]   Number of threads : " << args.num_threads << std::endl;
+	std::cout << "[-t] Number of threads   : " << args.num_threads << std::endl;
 	if (args.out_bloom && args.solid) {
 		std::cout << "[\033[1;34m--out-bloom\033[0m/\033[1;34m--solid\033[0m]    : ";
 		std::cout << "Non-erroneous k-mers in a Bloom filter" << std::endl;
@@ -97,7 +98,7 @@ print_updated_params(
 		std::cout << "- Estimated error k-mer threshold : " << hit_cap << std::endl;
 	}
 	if (out_bloom) {
-		std::cout << "- Output Bloom filter size : " << hit_size << std::endl;
+		std::cout << "- Output Bloom filter size  : " << hit_size << " bytes" << std::endl;
 	}
 	std::cout << std::endl;
 }
