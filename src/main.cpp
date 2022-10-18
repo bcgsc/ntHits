@@ -84,10 +84,10 @@ main(int argc, char** argv)
 	unsigned given_hit_cap = args.thresh_min;
 	nthits::get_thresholds(hist, args.solid, hit_count, args.thresh_min);
 	bool hit_cap_changed = given_hit_cap != args.thresh_min;
-	dbf_size = nthits::calc_bf_size(hist[1], args.num_hashes, num_seeds, args.fpr);
-	cbf_size = nthits::calc_bf_size(hist[1] - hist[2], args.num_hashes, num_seeds, args.fpr);
+	dbf_size = hist[1] * 7;
+	cbf_size = (hist[1] - hist[2]) * 6;
 	if (args.out_bloom) {
-		hit_size = nthits::calc_bf_size(hit_count, args.num_hashes, num_seeds, args.fpr);
+		hit_size = nthits::calc_bf_size(hit_count, args.num_hashes, num_seeds, args.fpr) / 8;
 	} else {
 		hit_size = hit_count * 3;
 	}
