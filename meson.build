@@ -18,11 +18,9 @@ include_dirs = [
     include_directories('vendor/argparse/include')
 ]
 
-sources = run_command('scripts/list_sources.sh', check: true).stdout().strip().split()
-
 executable(
     'nthits',
-    ['src/main.cpp'] + sources,
+    ['src/main.cpp'],
     dependencies: dependencies,
     include_directories: include_dirs,
     install: true
