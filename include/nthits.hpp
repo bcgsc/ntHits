@@ -12,29 +12,16 @@
 #include "utils.hpp"
 
 namespace {
-#define PROCESS_HIT_TABLE                                                                          \
-	while (nth.roll()) {                                                                           \
-		if (!distincts.contains_insert(nth.hashes())) {                                            \
-			std::string current_kmer = seq.substr(nth.get_pos(), nth.get_k());                     \
-			to_canonical(current_kmer);                                                            \
-			if (hit_cap > 1) {                                                                     \
-				if (cbf.insert_thresh_contains(nth.hashes(), hit_cap - 1)) {                       \
-					hit_table.insert(nth.hashes()[0], current_kmer);                               \
-				}                                                                                  \
-			} else {                                                                               \
-				hit_table.insert(nth.hashes()[0], current_kmer);                                   \
-			}                                                                                      \
-		}                                                                                          \
-	}
-
-#define PROCESS_HIT_FILTER                                                                         \
+#define PROCESS(NTHASH, HIT_INSERT)                                                                \
+	NTHASH                                                                                         \
 	while (nth.roll()) {                                                                           \
 		if (distincts.contains_insert(nth.hashes())) {                                             \
 			if (hit_cap > 1) {                                                                     \
-				if (cbf.insert_thresh_contains(nth.hashes(), hit_cap - 1))                         \
-					hit_filter.insert(nth.hashes());                                               \
+				if (cbf.insert_contains(nth.hashes()) > hit_cap - 1) {                             \
+					HIT_INSERT                                                                     \
+				}                                                                                  \
 			} else {                                                                               \
-				hit_filter.insert(nth.hashes());                                                   \
+				HIT_INSERT                                                                         \
 			}                                                                                      \
 		}                                                                                          \
 	}
@@ -119,8 +106,10 @@ process(
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
     HitTable& hit_table)
 {
-	btllib::NtHash nth(seq, distincts.get_hash_num(), distincts.get_k());
-	PROCESS_HIT_TABLE
+	PROCESS(btllib::NtHash nth(seq, distincts.get_hash_num(), distincts.get_k());
+	        , std::string current_kmer = seq.substr(nth.get_pos(), nth.get_k());
+	        to_canonical(current_kmer);
+	        hit_table.insert(nth.hashes()[0], current_kmer);)
 }
 
 inline void
@@ -132,8 +121,11 @@ process(
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
     HitTable& hit_table)
 {
-	btllib::SeedNtHash nth(seq, { seed }, distincts.get_hash_num_per_seed(), distincts.get_k());
-	PROCESS_HIT_TABLE
+	PROCESS(
+	    btllib::SeedNtHash nth(seq, { seed }, distincts.get_hash_num_per_seed(), distincts.get_k());
+	    , std::string current_kmer = seq.substr(nth.get_pos(), nth.get_k());
+	    to_canonical(current_kmer);
+	    hit_table.insert(nth.hashes()[0], current_kmer);)
 }
 
 inline void
@@ -144,8 +136,8 @@ process(
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
     btllib::KmerBloomFilter& hit_filter)
 {
-	btllib::NtHash nth(seq, hit_filter.get_hash_num(), distincts.get_k());
-	PROCESS_HIT_FILTER
+	PROCESS(btllib::NtHash nth(seq, hit_filter.get_hash_num(), distincts.get_k());
+	        , hit_filter.insert(nth.hashes());)
 }
 
 inline void
@@ -157,8 +149,9 @@ process(
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
     btllib::SeedBloomFilter& hit_filter)
 {
-	btllib::SeedNtHash nth(seq, { seed }, hit_filter.get_hash_num_per_seed(), hit_filter.get_k());
-	PROCESS_HIT_FILTER
+	PROCESS(
+	    btllib::SeedNtHash nth(seq, { seed }, distincts.get_hash_num_per_seed(), distincts.get_k());
+	    , hit_filter.insert(nth.hashes());)
 }
 
 }
