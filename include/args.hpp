@@ -7,6 +7,7 @@
 #define PROGRAM_COPYRIGHT "Copyright 2019 Canada's Michael Smith Genome Science Centre"
 
 #include <argparse/argparse.hpp>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -16,7 +17,7 @@ struct ProgramArguments
 	unsigned kmer_length;
 	unsigned num_hashes;
 	double fpr;
-	unsigned thresh_min = 0;
+	unsigned min_count = 0, max_count = std::numeric_limits<unsigned>::max();
 	std::string out_file;
 	unsigned verbosity;
 	bool out_bloom;
@@ -61,9 +62,12 @@ parse_arguments(int argc, char** argv)
 	    .default_value((double)0.0001)
 	    .scan<'g', double>();
 
-	parser.add_argument("-c", "--cutoff")
-	    .help("k-mer cutoff threshold")
-	    .default_value(0U)
+	parser.add_argument("-cmin", "--min-count")
+	    .help("Minimum k-mer count (>=1)")
+	    .scan<'u', unsigned>();
+
+	parser.add_argument("-cmax", "--max-count")
+	    .help("Maximum k-mer count (<=" + std::to_string(std::numeric_limits<unsigned>::max()) + ")")
 	    .scan<'u', unsigned>();
 
 	parser.add_argument("-o", "--out").help("Output file's name").required();
@@ -104,12 +108,18 @@ parse_arguments(int argc, char** argv)
 		std::exit(1);
 	}
 
+	if (parser.is_used("-cmin")) {
+		args.min_count = parser.get<unsigned>("-cmin");
+	}
+	if (parser.is_used("-cmax")) {
+		args.max_count = parser.get<unsigned>("-cmax");
+	}
+
 	args.num_threads = parser.get<unsigned>("-t");
 	args.kmer_length = parser.get<unsigned>("-k");
 	args.num_hashes = parser.get<unsigned>("-h");
 	args.histogram_path = parser.get("-f");
 	args.fpr = parser.get<double>("-p");
-	args.thresh_min = parser.get<unsigned>("-c");
 	args.out_file = parser.get("-o");
 	args.out_bloom = parser.get<bool>("--out-bloom");
 	args.solid = parser.get<bool>("--solid");

@@ -107,8 +107,8 @@ print_args(const ProgramArguments& args)
 		std::cout << "[-k] k-mer length        : " << args.kmer_length << std::endl;
 		std::cout << "[-h] Hashes per k-mer    : " << args.num_hashes << std::endl;
 	}
-	if (args.thresh_min > 0) {
-		std::cout << "[-c] Filter threshold    : " << args.thresh_min << std::endl;
+	if (args.min_count > 0) {
+		std::cout << "[-c] Filter threshold    : " << args.min_count << std::endl;
 	}
 	if (args.fpr > 0 && args.out_bloom) {
 		std::cout << "[-p] Bloom filter FPR    : " << args.fpr << std::endl;

@@ -12,17 +12,14 @@
 #include "utils.hpp"
 
 namespace {
-#define PROCESS(NTHASH, HIT_INSERT)                                                                \
+#define PROCESS(NTHASH, HIT_INSERT, HIT_REMOVE)                                                    \
 	NTHASH                                                                                         \
 	while (nth.roll()) {                                                                           \
-		if (distincts.contains_insert(nth.hashes())) {                                             \
-			if (hit_cap > 1) {                                                                     \
-				if (cbf.insert_contains(nth.hashes()) > hit_cap - 1) {                             \
-					HIT_INSERT                                                                     \
-				}                                                                                  \
-			} else {                                                                               \
-				HIT_INSERT                                                                         \
-			}                                                                                      \
+		auto count = cbf.insert_contains(nth.hashes());                                            \
+		if (count == max_count + 1) {                                                              \
+			HIT_REMOVE                                                                             \
+		} else if (count >= min_count && count <= max_count) {                                     \
+			HIT_INSERT                                                                             \
 		}                                                                                          \
 	}
 }
@@ -88,12 +85,14 @@ class HitTable
 		}
 	}
 
-	void save(const std::string& file_path, const unsigned hit_cap)
+	void remove(const uint64_t hash_value) {}
+
+	void save(const std::string& file_path, const unsigned min_count)
 	{
 		std::ofstream outFile(file_path);
 		for (size_t i = 0; i < table_size; i++)
 			if (entries[i].count != 0)
-				outFile << entries[i].kmer << "\t" << entries[i].count + hit_cap << std::endl;
+				outFile << entries[i].kmer << "\t" << entries[i].count + min_count << std::endl;
 		outFile.close();
 	}
 };
@@ -101,57 +100,64 @@ class HitTable
 inline void
 process(
     const std::string& seq,
-    const unsigned hit_cap,
-    btllib::KmerBloomFilter& distincts,
+    const unsigned kmer_length,
+    const unsigned num_hashes,
+    const unsigned min_count,
+    const unsigned max_count,
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
     HitTable& hit_table)
 {
-	PROCESS(btllib::NtHash nth(seq, distincts.get_hash_num(), distincts.get_k());
+	PROCESS(btllib::NtHash nth(seq, num_hashes, kmer_length);
 	        , std::string current_kmer = seq.substr(nth.get_pos(), nth.get_k());
 	        to_canonical(current_kmer);
-	        hit_table.insert(nth.hashes()[0], current_kmer);)
+	        hit_table.insert(nth.hashes()[0], current_kmer);
+	        , hit_table.remove(nth.hashes()[0]);)
 }
 
 inline void
 process(
     const std::string& seq,
     const std::string& seed,
-    const unsigned hit_cap,
-    btllib::SeedBloomFilter& distincts,
+    const unsigned num_hashes,
+    const unsigned min_count,
+    const unsigned max_count,
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
     HitTable& hit_table)
 {
-	PROCESS(
-	    btllib::SeedNtHash nth(seq, { seed }, distincts.get_hash_num_per_seed(), distincts.get_k());
-	    , std::string current_kmer = seq.substr(nth.get_pos(), nth.get_k());
-	    to_canonical(current_kmer);
-	    hit_table.insert(nth.hashes()[0], current_kmer);)
+	PROCESS(btllib::SeedNtHash nth(seq, { seed }, num_hashes, seed.size());
+	        , std::string current_kmer = seq.substr(nth.get_pos(), nth.get_k());
+	        to_canonical(current_kmer);
+	        hit_table.insert(nth.hashes()[0], current_kmer);
+	        , hit_table.remove(nth.hashes()[0]);)
 }
 
 inline void
 process(
     const std::string& seq,
-    const unsigned hit_cap,
-    btllib::KmerBloomFilter& distincts,
+    const unsigned kmer_length,
+    const unsigned num_hashes,
+    const unsigned min_count,
+    const unsigned max_count,
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
-    btllib::KmerBloomFilter& hit_filter)
+    btllib::KmerCountingBloomFilter<cbf_counter_t>& hit_filter)
 {
-	PROCESS(btllib::NtHash nth(seq, hit_filter.get_hash_num(), distincts.get_k());
-	        , hit_filter.insert(nth.hashes());)
+	PROCESS(btllib::NtHash nth(seq, num_hashes, kmer_length);, hit_filter.insert(nth.hashes());
+	        , hit_filter.clear(nth.hashes());)
 }
 
 inline void
 process(
     const std::string& seq,
     const std::string& seed,
-    const unsigned hit_cap,
-    btllib::SeedBloomFilter& distincts,
+    const unsigned num_hashes,
+    const unsigned min_count,
+    const unsigned max_count,
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
-    btllib::SeedBloomFilter& hit_filter)
+    btllib::KmerCountingBloomFilter<cbf_counter_t>& hit_filter)
 {
-	PROCESS(
-	    btllib::SeedNtHash nth(seq, { seed }, distincts.get_hash_num_per_seed(), distincts.get_k());
-	    , hit_filter.insert(nth.hashes());)
+	PROCESS(btllib::SeedNtHash nth(seq, { seed }, num_hashes, seed.size());
+	        , hit_filter.insert(nth.hashes());
+	        , hit_filter.clear(nth.hashes());)
 }
 
 }
