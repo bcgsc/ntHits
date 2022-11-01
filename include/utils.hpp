@@ -59,7 +59,12 @@ to_canonical(std::string& bmer)
 }
 
 void
-get_thresholds(std::vector<uint64_t> histogram, bool solid, size_t& hit_count, unsigned& hit_cap)
+get_thresholds(
+    std::vector<uint64_t> histogram,
+    bool solid,
+    size_t& hit_count,
+    unsigned& min_count,
+    unsigned max_count)
 {
 	int hist_index = 2, err_cov = 1;
 	while (hist_index <= (int)histogram.size() - 2 &&
@@ -82,19 +87,21 @@ get_thresholds(std::vector<uint64_t> histogram, bool solid, size_t& hit_count, u
 	}
 	min_cov--;
 
-	if (hit_cap == 0 && solid) {
-		hit_cap = min_cov;
-	} else if (hit_cap == 0) {
-		hit_cap = 1.75 * max_cov;
+	if (min_count == 0 && solid) {
+		min_count = min_cov;
+	} else if (min_count == 0) {
+		min_count = 1.75 * max_cov;
 	}
 
 	hit_count = histogram[1];
-	for (unsigned i = 2; i <= hit_cap + 1; i++)
+	for (unsigned i = 2; i <= min_count + 1; i++)
+		hit_count -= histogram[i];
+	for (unsigned i = max_count + 1; i < histogram.size(); i++)
 		hit_count -= histogram[i];
 }
 
 size_t
-calc_bf_size(double num_elements, double num_hashes, int num_seeds, double fpr)
+get_bf_size(double num_elements, double num_hashes, int num_seeds, double fpr)
 {
 	double r = -num_hashes / log(1.0 - exp(log(fpr) / num_hashes));
 	size_t m = ceil(num_elements * r);

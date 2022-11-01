@@ -3,7 +3,7 @@
 
 #define PROGRAM_NAME "ntHits"
 #define PROGRAM_VERSION "0.0.1"
-#define PROGRAM_DESCRIPTION "Reports the most frequent k-mers in input files."
+#define PROGRAM_DESCRIPTION "Filters k-mers based on counts (cmin <= count <= cmax) in input files."
 #define PROGRAM_COPYRIGHT "Copyright 2019 Canada's Michael Smith Genome Science Centre"
 
 #include <argparse/argparse.hpp>
@@ -11,13 +11,17 @@
 #include <string>
 #include <vector>
 
+#include "nthits.hpp"
+
+const nthits::cbf_counter_t CBF_COUNTER_MAX = std::numeric_limits<nthits::cbf_counter_t>::max() - 1;
+
 struct ProgramArguments
 {
 	unsigned num_threads;
 	unsigned kmer_length;
 	unsigned num_hashes;
 	double fpr;
-	unsigned min_count = 0, max_count = std::numeric_limits<unsigned>::max();
+	unsigned min_count = 0, max_count = CBF_COUNTER_MAX;
 	std::string out_file;
 	unsigned verbosity;
 	bool out_bloom;
@@ -63,11 +67,11 @@ parse_arguments(int argc, char** argv)
 	    .scan<'g', double>();
 
 	parser.add_argument("-cmin", "--min-count")
-	    .help("Minimum k-mer count (>=1)")
+	    .help("Minimum k-mer count (>1)")
 	    .scan<'u', unsigned>();
 
 	parser.add_argument("-cmax", "--max-count")
-	    .help("Maximum k-mer count (<=" + std::to_string(std::numeric_limits<unsigned>::max()) + ")")
+	    .help("Maximum k-mer count (<" + std::to_string(args.max_count + 1) + ")")
 	    .scan<'u', unsigned>();
 
 	parser.add_argument("-o", "--out").help("Output file's name").required();
@@ -113,6 +117,12 @@ parse_arguments(int argc, char** argv)
 	}
 	if (parser.is_used("-cmax")) {
 		args.max_count = parser.get<unsigned>("-cmax");
+	}
+
+	if (args.min_count <= 1 || args.max_count > CBF_COUNTER_MAX) {
+		std::cerr << "Invalid k-mer count range, must be cmin > 1 and cmax < " << CBF_COUNTER_MAX
+		          << std::endl;
+		std::exit(1);
 	}
 
 	args.num_threads = parser.get<unsigned>("-t");
