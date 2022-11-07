@@ -75,7 +75,7 @@ load_histogram(const std::string& path)
 	if (args.verbosity > 1) {                                                                      \
 		std::cout << std::endl << "Distinct k-mers Bloom filter stats:" << std::endl;              \
 		print_bloom_filter_stats(bf.get_fpr(), args.fpr, bf.get_occupancy());                      \
-		std::cout << std::endl << "Intermediate counting Bloom filter stats" << std::endl;         \
+		std::cout << std::endl << "Intermediate counting Bloom filter stats:" << std::endl;        \
 		print_bloom_filter_stats(cbf.get_fpr(), args.fpr, cbf.get_occupancy());                    \
 		std::cout << std::endl;                                                                    \
 	}

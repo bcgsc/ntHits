@@ -174,8 +174,8 @@ print_bloom_filter_stats(const double fpr, const double target_fpr, const double
 	} else {
 		fpr_str = color(std::to_string(fpr), Color::FG_GREEN);
 	}
-	std::cout << "  - Actual false positive rate (FPR): " << fpr_str << std::endl;
-	std::cout << "  - Bloom filter occupancy: " << occupancy << std::endl;
+	std::cout << "  - Actual false positive rate (FPR) : " << fpr_str << std::endl;
+	std::cout << "  - Bloom filter occupancy           : " << occupancy << std::endl;
 }
 
 #endif // NTHITS_UI_HPP
