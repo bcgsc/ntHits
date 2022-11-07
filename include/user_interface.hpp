@@ -172,7 +172,7 @@ print_bloom_filter_stats(const double fpr, const double target_fpr, const double
 	} else if (fpr > target_fpr * 10) {
 		fpr_str = color(std::to_string(fpr), Color::FG_YELLOW);
 	} else {
-		fpr_str = std::to_string(fpr);
+		fpr_str = color(std::to_string(fpr), Color::FG_GREEN);
 	}
 	std::cout << "  - Actual false positive rate (FPR): " << fpr_str << std::endl;
 	std::cout << "  - Bloom filter occupancy: " << occupancy << std::endl;

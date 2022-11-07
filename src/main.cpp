@@ -141,6 +141,7 @@ main(int argc, char** argv)
 		if (args.verbosity > 0) {
 			std::cout << "Output Bloom filter stats:" << std::endl;
 			print_bloom_filter_stats(hits.get_fpr(), args.fpr, hits.get_occupancy());
+			std::cout << std::endl;
 		}
 		TIME_EXECUTION("Saving Bloom filter", timer, hits.save(args.out_file);)
 	} else if (args.out_bloom) {
@@ -154,6 +155,7 @@ main(int argc, char** argv)
 		if (args.verbosity > 0) {
 			std::cout << "Output Bloom filter stats:" << std::endl;
 			print_bloom_filter_stats(hits.get_fpr(), args.fpr, hits.get_occupancy());
+			std::cout << std::endl;
 		}
 		TIME_EXECUTION("Saving Bloom filter", timer, hits.save(args.out_file);)
 		PRINT_EXTRA_BF_STATS
