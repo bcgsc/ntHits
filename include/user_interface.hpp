@@ -137,18 +137,28 @@ void
 print_updated_params(
     size_t hit_count,
     uint64_t num_distinct,
+    size_t bf_size,
     unsigned hit_cap,
     bool hit_cap_changed,
+    size_t cbf_size,
     bool out_bloom,
-    size_t hit_size)
+    size_t hit_size,
+    unsigned verbosity)
 {
-	std::cout << "- Number of distinct k-mers : " << num_distinct << std::endl;
-	std::cout << "- Number of filtered k-mers : " << hit_count << std::endl;
+	std::cout << "- Number of distinct k-mers               : " << num_distinct << std::endl;
+	std::cout << "- Number of filtered k-mers               : " << hit_count << std::endl;
 	if (hit_cap_changed) {
-		std::cout << "- Estimated error k-mer threshold : " << hit_cap << std::endl;
+		std::cout << "- Estimated error k-mer threshold         : " << hit_cap << std::endl;
+	}
+	if (verbosity > 1) {
+		std::cout << "- Distinct k-mers Bloom filter size       : " << bf_size << " bytes"
+		          << std::endl;
+		std::cout << "- Intermediate counting Bloom filter size : " << cbf_size << " bytes"
+		          << std::endl;
 	}
 	if (out_bloom) {
-		std::cout << "- Output Bloom filter size  : " << hit_size << " bytes" << std::endl;
+		std::cout << "- Output Bloom filter size                : " << hit_size << " bytes"
+		          << std::endl;
 	}
 	std::cout << std::endl;
 }
