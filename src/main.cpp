@@ -134,8 +134,7 @@ main(int argc, char** argv)
 		TIME_EXECUTION(
 		    "Initializing Bloom filters", timer, btllib::BloomFilter bf(bf_size, args.num_hashes);
 		    btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
-		    btllib::KmerCountingBloomFilter<nthits::cbf_counter_t> hits(
-		        hit_size, args.num_hashes, args.kmer_length);)
+		    btllib::CountingBloomFilter<nthits::cbf_counter_t> hits(hit_size, args.num_hashes);)
 		TIME_EXECUTION("Processing k-mers", timer, POPULATE_KMERS(bf, cbf, hits))
 		PRINT_EXTRA_BF_STATS
 		if (args.verbosity > 0) {
@@ -148,8 +147,7 @@ main(int argc, char** argv)
 		TIME_EXECUTION(
 		    "Initializing Bloom filters", timer, btllib::BloomFilter bf(bf_size, args.num_hashes);
 		    btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
-		    btllib::KmerCountingBloomFilter<nthits::cbf_counter_t> hits(
-		        hit_size, args.num_hashes, args.seeds[0].size());)
+		    btllib::CountingBloomFilter<nthits::cbf_counter_t> hits(hit_size, args.num_hashes);)
 		TIME_EXECUTION("Processing spaced seeds", timer, POPULATE_SEEDS(bf, cbf, hits))
 		PRINT_EXTRA_BF_STATS
 		if (args.verbosity > 0) {

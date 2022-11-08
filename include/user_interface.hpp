@@ -4,8 +4,6 @@
 #include <chrono>
 #include <iostream>
 
-#include "args.hpp"
-
 #define LOGO                                                                                       \
 	"       _          _ _              \n"                                                        \
 	" _ __ | |_  /\\  /(_) |_ ___       \n"                                                        \
@@ -87,50 +85,6 @@ void
 print_logo()
 {
 	std::cout << LOGO << "\tv" << PROGRAM_VERSION << std::endl << std::endl;
-}
-
-void
-print_args(const ProgramArguments& args)
-{
-	std::cout << "Input files:" << std::endl;
-	for (const auto& file : args.input_files) {
-		std::cout << "  - " << file << std::endl;
-	}
-	std::cout << "Sequence reading mode       : " << (args.long_mode ? "LONG" : "SHORT")
-	          << std::endl;
-	if (args.seeds.size() > 0) {
-		std::cout << "[-s] Spaced seed patterns   :" << std::endl;
-		for (const auto& seed : args.seeds) {
-			std::cout << "  - " << seed << std::endl;
-		}
-		std::cout << "[-h] Hashes per seed        : " << args.num_hashes << std::endl;
-	} else {
-		std::cout << "[-k] k-mer length           : " << args.kmer_length << std::endl;
-		std::cout << "[-h] Hashes per k-mer       : " << args.num_hashes << std::endl;
-	}
-	if (args.fpr > 0 && args.out_bloom) {
-		std::cout << "[-p] Bloom filter FPR       : " << args.fpr << std::endl;
-	}
-	std::cout << "[-t] Number of threads      : " << args.num_threads << std::endl;
-	if (args.min_count > 0) {
-		std::cout << "[-cmin] Min. k-mer count    : " << args.min_count << std::endl;
-	}
-	if (args.max_count < CBF_COUNTER_MAX) {
-		std::cout << "[-cmax] Max. k-mer count    : " << args.max_count << std::endl;
-	}
-	std::string out_bloom = args.out_bloom ? color("--out-bloom", Color::FG_BLUE) : "--out-bloom";
-	std::string solid = args.solid ? color("--solid", Color::FG_BLUE) : "--solid";
-	std::cout << "[" << out_bloom << "/" << solid << "]       : ";
-	if (args.out_bloom && args.solid) {
-		std::cout << "Non-erroneous k-mers in a Bloom filter" << std::endl;
-	} else if (args.out_bloom) {
-		std::cout << "Repeated k-mers in a Bloom filter" << std::endl;
-	} else if (args.solid) {
-		std::cout << "Non-erroneous k-mers and counts in a table" << std::endl;
-	} else {
-		std::cout << "Repeated k-mers and counts in a table" << std::endl;
-	}
-	std::cout << std::endl;
 }
 
 void

@@ -25,3 +25,11 @@ executable(
     include_directories: include_dirs,
     install: true
 )
+
+executable(
+    'nthits-bfq',
+    ['src/bf_query.cpp'],
+    dependencies: dependencies,
+    include_directories: include_dirs,
+    install: true
+)

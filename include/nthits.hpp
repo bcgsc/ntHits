@@ -143,7 +143,7 @@ process(
     const unsigned max_count,
     btllib::BloomFilter& bf,
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
-    btllib::KmerCountingBloomFilter<cbf_counter_t>& hit_filter)
+    btllib::CountingBloomFilter<cbf_counter_t>& hit_filter)
 {
 	btllib::NtHash nthash(seq, num_hashes, kmer_length);
 	PROCESS(hit_filter.insert(nthash.hashes());, hit_filter.clear(nthash.hashes());)
@@ -158,7 +158,7 @@ process(
     const unsigned max_count,
     btllib::BloomFilter& bf,
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
-    btllib::KmerCountingBloomFilter<cbf_counter_t>& hit_filter)
+    btllib::CountingBloomFilter<cbf_counter_t>& hit_filter)
 {
 	btllib::SeedNtHash nthash(seq, { seed }, num_hashes, seed.size());
 	PROCESS(hit_filter.insert(nthash.hashes());, hit_filter.clear(nthash.hashes());)

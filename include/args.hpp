@@ -3,8 +3,8 @@
 
 #define PROGRAM_NAME "ntHits"
 #define PROGRAM_VERSION "0.0.1"
-#define PROGRAM_DESCRIPTION "Filters k-mers based on counts (cmin <= count <= cmax) in input files."
-#define PROGRAM_COPYRIGHT "Copyright 2019 Canada's Michael Smith Genome Science Centre"
+#define PROGRAM_DESCRIPTION "Filters k-mers based on counts (cmin <= count <= cmax) in input files"
+#define PROGRAM_COPYRIGHT "Copyright 2022 Canada's Michael Smith Genome Science Centre"
 
 #include <argparse/argparse.hpp>
 #include <limits>
@@ -153,6 +153,38 @@ parse_arguments(int argc, char** argv)
 	}
 
 	return args;
+}
+
+void
+print_args(const ProgramArguments& args)
+{
+	std::cout << "Input files:" << std::endl;
+	for (const auto& file : args.input_files) {
+		std::cout << "  - " << file << std::endl;
+	}
+	std::cout << "Sequence reading mode       : " << (args.long_mode ? "LONG" : "SHORT")
+	          << std::endl;
+	if (args.seeds.size() > 0) {
+		std::cout << "[-s] Spaced seed patterns   :" << std::endl;
+		for (const auto& seed : args.seeds) {
+			std::cout << "  - " << seed << std::endl;
+		}
+		std::cout << "[-h] Hashes per seed        : " << args.num_hashes << std::endl;
+	} else {
+		std::cout << "[-k] k-mer length           : " << args.kmer_length << std::endl;
+		std::cout << "[-h] Hashes per k-mer       : " << args.num_hashes << std::endl;
+	}
+	if (args.fpr > 0 && args.out_bloom) {
+		std::cout << "[-p] Bloom filter FPR       : " << args.fpr << std::endl;
+	}
+	std::cout << "[-t] Number of threads      : " << args.num_threads << std::endl;
+	if (args.min_count > 0) {
+		std::cout << "[-cmin] Min. k-mer count    : " << args.min_count << std::endl;
+	}
+	if (args.max_count < CBF_COUNTER_MAX) {
+		std::cout << "[-cmax] Max. k-mer count    : " << args.max_count << std::endl;
+	}
+	std::cout << std::endl;
 }
 
 #endif // NTHITS_ARGS_HPP
