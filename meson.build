@@ -15,7 +15,8 @@ dependencies = [
 
 include_dirs = [
     include_directories('include'),
-    include_directories('vendor/argparse/include')
+    include_directories('vendor/argparse/include'),
+    include_directories('vendor/indicators/include'),
 ]
 
 executable(
