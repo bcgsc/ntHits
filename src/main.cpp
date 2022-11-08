@@ -83,14 +83,12 @@ load_histogram(const std::string& path)
 int
 main(int argc, char** argv)
 {
-	auto args = parse_arguments(argc, argv);
+	print_logo();
 
-	if (args.verbosity > 0) {
-		print_logo();
-	}
+	auto args = ProgramArguments(argc, argv);
 
 	if (args.verbosity > 1) {
-		print_args(args);
+		args.print();
 	}
 
 	unsigned seq_reader_mode;
@@ -156,7 +154,6 @@ main(int argc, char** argv)
 			std::cout << std::endl;
 		}
 		TIME_EXECUTION("Saving Bloom filter", timer, hits.save(args.out_file);)
-		PRINT_EXTRA_BF_STATS
 	} else if (args.seeds.empty()) {
 		TIME_EXECUTION(
 		    "Initializing Bloom filters and hit table",

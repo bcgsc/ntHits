@@ -82,9 +82,9 @@ parse_args(int argc, char** argv)
 int
 main(int argc, char** argv)
 {
-	auto args = parse_args(argc, argv);
-
     omp_set_num_threads(1);
+	
+	auto args = parse_args(argc, argv);
 
 	if (!args.silent) {
 		print_logo();

@@ -30,13 +30,14 @@ struct ProgramArguments
 	std::string histogram_path;
 	std::vector<std::string> input_files;
 	std::vector<std::string> seeds;
+
+	ProgramArguments(int argc, char** argv);
+
+	void print();
 };
 
-ProgramArguments
-parse_arguments(int argc, char** argv)
+ProgramArguments::ProgramArguments(int argc, char** argv)
 {
-	ProgramArguments args;
-
 	auto default_args = argparse::default_arguments::none;
 	argparse::ArgumentParser parser(PROGRAM_NAME, PROGRAM_VERSION, default_args);
 	parser.add_description(PROGRAM_DESCRIPTION);
@@ -71,7 +72,7 @@ parse_arguments(int argc, char** argv)
 	    .scan<'u', unsigned>();
 
 	parser.add_argument("-cmax", "--max-count")
-	    .help("Maximum k-mer count (<" + std::to_string(args.max_count + 1) + ")")
+	    .help("Maximum k-mer count (<" + std::to_string(max_count + 1) + ")")
 	    .scan<'u', unsigned>();
 
 	parser.add_argument("-o", "--out").help("Output file's name").required();
@@ -95,7 +96,7 @@ parse_arguments(int argc, char** argv)
 	    .implicit_value(true);
 
 	parser.add_argument("-v")
-	    .action([&](const auto&) { ++args.verbosity; })
+	    .action([&](const auto&) { ++verbosity; })
 	    .append()
 	    .help("Level of details printed to stdout (-v: normal, -vv detailed)")
 	    .default_value(false)
@@ -113,76 +114,73 @@ parse_arguments(int argc, char** argv)
 	}
 
 	if (parser.is_used("-cmin")) {
-		args.min_count = parser.get<unsigned>("-cmin");
+		min_count = parser.get<unsigned>("-cmin");
 	}
 	if (parser.is_used("-cmax")) {
-		args.max_count = parser.get<unsigned>("-cmax");
+		max_count = parser.get<unsigned>("-cmax");
 	}
 
-	if (args.min_count <= 1 || args.max_count > CBF_COUNTER_MAX) {
+	if (min_count <= 1 || max_count > CBF_COUNTER_MAX) {
 		std::cerr << "Invalid k-mer count range, must be cmin > 1 and cmax < " << CBF_COUNTER_MAX
 		          << std::endl;
 		std::exit(1);
 	}
 
-	args.num_threads = parser.get<unsigned>("-t");
-	args.kmer_length = parser.get<unsigned>("-k");
-	args.num_hashes = parser.get<unsigned>("-h");
-	args.histogram_path = parser.get("-f");
-	args.fpr = parser.get<double>("-p");
-	args.out_file = parser.get("-o");
-	args.out_bloom = parser.get<bool>("--out-bloom");
-	args.solid = parser.get<bool>("--solid");
-	args.long_mode = parser.get<bool>("--long-mode");
+	num_threads = parser.get<unsigned>("-t");
+	kmer_length = parser.get<unsigned>("-k");
+	num_hashes = parser.get<unsigned>("-h");
+	histogram_path = parser.get("-f");
+	fpr = parser.get<double>("-p");
+	out_file = parser.get("-o");
+	out_bloom = parser.get<bool>("--out-bloom");
+	solid = parser.get<bool>("--solid");
+	long_mode = parser.get<bool>("--long-mode");
 
 	if (parser.is_used("-s")) {
 		std::istringstream ss(parser.get("-s"));
 		std::string seed;
 		while (std::getline(ss, seed, ',')) {
-			args.seeds.push_back(seed);
-			args.kmer_length = seed.size();
+			seeds.push_back(seed);
+			kmer_length = seed.size();
 		}
 	}
 
 	try {
-		args.input_files = parser.get<std::vector<std::string> >("files");
+		input_files = parser.get<std::vector<std::string> >("files");
 	} catch (std::logic_error& e) {
 		std::cerr << "No files provided" << std::endl;
 		std::cout << parser << std::endl;
 		exit(0);
 	}
-
-	return args;
 }
 
 void
-print_args(const ProgramArguments& args)
+ProgramArguments::print()
 {
 	std::cout << "Input files:" << std::endl;
-	for (const auto& file : args.input_files) {
+	for (const auto& file : input_files) {
 		std::cout << "  - " << file << std::endl;
 	}
-	std::cout << "Sequence reading mode       : " << (args.long_mode ? "LONG" : "SHORT")
-	          << std::endl;
-	if (args.seeds.size() > 0) {
+	std::cout << "Sequence reading mode       : " << (long_mode ? "LONG" : "SHORT") << std::endl;
+	if (seeds.size() > 0) {
 		std::cout << "[-s] Spaced seed patterns   :" << std::endl;
-		for (const auto& seed : args.seeds) {
+		for (const auto& seed : seeds) {
 			std::cout << "  - " << seed << std::endl;
 		}
-		std::cout << "[-h] Hashes per seed        : " << args.num_hashes << std::endl;
+		std::cout << "[-h] Hashes per seed        : " << num_hashes << std::endl;
 	} else {
-		std::cout << "[-k] k-mer length           : " << args.kmer_length << std::endl;
-		std::cout << "[-h] Hashes per k-mer       : " << args.num_hashes << std::endl;
+		std::cout << "[-k] k-mer length           : " << kmer_length << std::endl;
+		std::cout << "[-h] Hashes per k-mer       : " << num_hashes << std::endl;
 	}
-	if (args.fpr > 0 && args.out_bloom) {
-		std::cout << "[-p] Bloom filter FPR       : " << args.fpr << std::endl;
+	if (fpr > 0 && out_bloom) {
+		std::cout << "[-p] Bloom filter FPR       : " << fpr << std::endl;
 	}
-	std::cout << "[-t] Number of threads      : " << args.num_threads << std::endl;
-	if (args.min_count > 0) {
-		std::cout << "[-cmin] Min. k-mer count    : " << args.min_count << std::endl;
+	std::cout << "[-t] Number of threads      : " << num_threads << std::endl;
+	if (min_count > 0) {
+		std::cout << "[-cmin] Min. k-mer count    : " << min_count << std::endl;
 	}
-	if (args.max_count < CBF_COUNTER_MAX) {
-		std::cout << "[-cmax] Max. k-mer count    : " << args.max_count << std::endl;
+	if (max_count < CBF_COUNTER_MAX) {
+		std::cout << "[-cmax] Max. k-mer count    : " << max_count << std::endl;
 	}
 	std::cout << std::endl;
 }
