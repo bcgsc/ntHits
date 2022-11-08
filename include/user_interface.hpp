@@ -11,11 +11,13 @@
 	"| | | | |_/ __  /| | |_\\__ \\     \n"                                                        \
 	"|_| |_|\\__\\/ /_/ |_|\\__|___/    "
 
-#define TIME_EXECUTION(MESSAGE, TIMER, CODE)                                                       \
+#define TIMER_START(TIMER, MESSAGE)                                                                \
 	std::cout << MESSAGE << "... " << std::flush;                                                  \
-	TIMER.start();                                                                                 \
-	CODE TIMER.stop();                                                                             \
-	TIMER.print_done();
+	TIMER.start();
+
+#define TIMER_STOP(TIMER)                                                                          \
+	TIMER.stop();                                                                                  \
+	std::cout << "DONE (" << TIMER.to_string() << ")" << std::endl;
 
 enum Color
 {
