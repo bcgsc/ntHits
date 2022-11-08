@@ -16,19 +16,6 @@
 #include <string>
 #include <vector>
 
-inline std::vector<uint64_t>
-load_histogram(const std::string& path)
-{
-	std::vector<uint64_t> hist;
-	std::ifstream hist_file(path);
-	std::string freq;
-	uint64_t value;
-	while (hist_file >> freq >> value) {
-		hist.push_back(value);
-	}
-	return hist;
-}
-
 #define POPULATE_KMERS(BF, CBF, HITS)                                                              \
 	for (const auto& file_path : args.input_files) {                                               \
 		btllib::SeqReader reader(file_path, seq_reader_mode);                                      \
@@ -38,14 +25,7 @@ load_histogram(const std::string& path)
 				continue;                                                                          \
 			}                                                                                      \
 			nthits::process(                                                                       \
-			    record.seq,                                                                        \
-			    args.kmer_length,                                                                  \
-			    args.num_hashes,                                                                   \
-			    args.min_count,                                                                    \
-			    args.max_count,                                                                    \
-			    BF,                                                                                \
-			    CBF,                                                                               \
-			    HITS);                                                                             \
+			    record.seq, args.kmer_length, args.min_count, args.max_count, BF, CBF, HITS);      \
 		}                                                                                          \
 	}
 
@@ -58,15 +38,7 @@ load_histogram(const std::string& path)
 				if (record.seq.size() < seed.size()) {                                             \
 					continue;                                                                      \
 				}                                                                                  \
-				nthits::process(                                                                   \
-				    record.seq,                                                                    \
-				    seed,                                                                          \
-				    args.num_hashes,                                                               \
-				    args.min_count,                                                                \
-				    args.max_count,                                                                \
-				    BF,                                                                            \
-				    CBF,                                                                           \
-				    HITS);                                                                         \
+				nthits::process(record.seq, seed, args.min_count, args.max_count, BF, CBF, HITS);  \
 			}                                                                                      \
 		}                                                                                          \
 	}
@@ -79,6 +51,19 @@ load_histogram(const std::string& path)
 		print_bloom_filter_stats(cbf.get_fpr(), args.fpr, cbf.get_occupancy());                    \
 		std::cout << std::endl;                                                                    \
 	}
+
+inline std::vector<uint64_t>
+load_histogram(const std::string& path)
+{
+	std::vector<uint64_t> hist;
+	std::ifstream hist_file(path);
+	std::string freq;
+	uint64_t value;
+	while (hist_file >> freq >> value) {
+		hist.push_back(value);
+	}
+	return hist;
+}
 
 int
 main(int argc, char** argv)
@@ -109,7 +94,7 @@ main(int argc, char** argv)
 	size_t bf_size, cbf_size, hit_size;
 	bf_size = hist[1] * 7 / 8;
 	cbf_size = (hist[1] - hist[2]) * 6;
-	if (args.out_bloom) {
+	if (args.out_is_filter()) {
 		hit_size = nthits::get_bf_size(hit_count, args.num_hashes, args.seeds.size(), args.fpr);
 	} else {
 		hit_size = hit_count * 3;
@@ -122,13 +107,13 @@ main(int argc, char** argv)
 		    args.min_count,
 		    hit_cap_changed,
 		    cbf_size,
-		    args.out_bloom,
+		    args.out_is_filter(),
 		    hit_size,
 		    args.verbosity);
 	}
 
 	Timer timer;
-	if (args.out_bloom && args.seeds.empty()) {
+	if (args.out_is_filter() && !args.using_seeds()) {
 		TIME_EXECUTION(
 		    "Initializing Bloom filters", timer, btllib::BloomFilter bf(bf_size, args.num_hashes);
 		    btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
@@ -141,7 +126,7 @@ main(int argc, char** argv)
 			std::cout << std::endl;
 		}
 		TIME_EXECUTION("Saving Bloom filter", timer, hits.save(args.out_file);)
-	} else if (args.out_bloom) {
+	} else if (args.out_is_filter()) {
 		TIME_EXECUTION(
 		    "Initializing Bloom filters", timer, btllib::BloomFilter bf(bf_size, args.num_hashes);
 		    btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
@@ -154,7 +139,7 @@ main(int argc, char** argv)
 			std::cout << std::endl;
 		}
 		TIME_EXECUTION("Saving Bloom filter", timer, hits.save(args.out_file);)
-	} else if (args.seeds.empty()) {
+	} else if (!args.using_seeds()) {
 		TIME_EXECUTION(
 		    "Initializing Bloom filters and hit table",
 		    timer,

@@ -13,7 +13,12 @@
 
 #include "nthits.hpp"
 
-const nthits::cbf_counter_t CBF_COUNTER_MAX = std::numeric_limits<nthits::cbf_counter_t>::max() - 1;
+enum OutputType
+{
+	HIT_TABLE,
+	BLOOM_FILTER,
+	COUNTING_BLOOM_FILTER
+};
 
 struct ProgramArguments
 {
@@ -21,10 +26,11 @@ struct ProgramArguments
 	unsigned kmer_length;
 	unsigned num_hashes;
 	double fpr;
-	unsigned min_count = 0, max_count = CBF_COUNTER_MAX;
+	bool has_min_count = false, has_max_count = false;
+	unsigned min_count = 0, max_count = std::numeric_limits<nthits::cbf_counter_t>::max() - 1;
 	std::string out_file;
 	unsigned verbosity;
-	bool out_bloom;
+	OutputType out_type;
 	bool solid;
 	bool long_mode;
 	std::string histogram_path;
@@ -34,6 +40,14 @@ struct ProgramArguments
 	ProgramArguments(int argc, char** argv);
 
 	void print();
+
+	bool out_is_filter()
+	{
+		return out_type == OutputType::COUNTING_BLOOM_FILTER ||
+		       out_type == OutputType::BLOOM_FILTER;
+	}
+
+	bool using_seeds() { return !seeds.empty(); }
 };
 
 ProgramArguments::ProgramArguments(int argc, char** argv)
@@ -43,47 +57,42 @@ ProgramArguments::ProgramArguments(int argc, char** argv)
 	parser.add_description(PROGRAM_DESCRIPTION);
 	parser.add_epilog(PROGRAM_COPYRIGHT);
 
-	parser.add_argument("-t", "--threads")
-	    .help("Number of parallel threads")
-	    .default_value(4U)
-	    .scan<'u', unsigned>();
-
-	parser.add_argument("-k", "--kmer")
-	    .help("k-mer length, ignored if using spaced seeds (-s)")
-	    .default_value(64U)
-	    .scan<'u', unsigned>();
-
-	parser.add_argument("-h", "--hashes")
-	    .help("Number of hashes to generate per k-mer/spaced seed")
-	    .default_value(3U)
-	    .scan<'u', unsigned>();
-
 	parser.add_argument("-f", "--frequencies")
 	    .help("Frequency histogram file (e.g. from ntCard)")
 	    .required();
 
-	parser.add_argument("-p")
-	    .help("Target Bloom filter false positive rate")
-	    .default_value((double)0.0001)
-	    .scan<'g', double>();
-
 	parser.add_argument("-cmin", "--min-count")
-	    .help("Minimum k-mer count (>1)")
+	    .help("Minimum k-mer count (>=1)")
+	    .default_value(1U)
 	    .scan<'u', unsigned>();
 
 	parser.add_argument("-cmax", "--max-count")
-	    .help("Maximum k-mer count (<" + std::to_string(max_count + 1) + ")")
+	    .help("Maximum k-mer count (<=" + std::to_string(max_count) + ")")
+	    .default_value(max_count)
 	    .scan<'u', unsigned>();
 
-	parser.add_argument("-o", "--out").help("Output file's name").required();
+	parser.add_argument("-k", "--kmer-length")
+	    .help("k-mer length, ignored if using spaced seeds (-s)")
+	    .default_value(64U)
+	    .scan<'u', unsigned>();
+
+	parser.add_argument("-h", "--num-hashes")
+	    .help("Number of hashes to generate per k-mer/spaced seed")
+	    .default_value(3U)
+	    .scan<'u', unsigned>();
+
+	parser.add_argument("-p", "--error-rate")
+	    .help("Target Bloom filter error rate")
+	    .default_value((double)0.0001)
+	    .scan<'g', double>();
 
 	parser.add_argument("-s", "--seeds")
 	    .help("If specified, use spaced seeds (separate with commas, e.g. 10101,11011)");
 
-	parser.add_argument("--out-bloom")
-	    .help("Output the most frequent k-mers in a Bloom filter")
-	    .default_value(false)
-	    .implicit_value(true);
+	parser.add_argument("-t", "--threads")
+	    .help("Number of parallel threads")
+	    .default_value(4U)
+	    .scan<'u', unsigned>();
 
 	parser.add_argument("--solid")
 	    .help("Output the solid k-mers (non-erroneous k-mers)")
@@ -103,6 +112,12 @@ ProgramArguments::ProgramArguments(int argc, char** argv)
 	    .implicit_value(true)
 	    .nargs(0);
 
+	parser.add_argument("-o", "--out-file").help("Output file's name").required();
+
+	parser.add_argument("out_type")
+	    .help("Output format: Bloom filter 'bf', counting Bloom filter ('cbf'), or table ('table')")
+	    .required();
+
 	parser.add_argument("files").help("Input files").required().remaining();
 
 	try {
@@ -114,15 +129,33 @@ ProgramArguments::ProgramArguments(int argc, char** argv)
 	}
 
 	if (parser.is_used("-cmin")) {
+		has_min_count = true;
 		min_count = parser.get<unsigned>("-cmin");
 	}
 	if (parser.is_used("-cmax")) {
+		has_max_count = true;
 		max_count = parser.get<unsigned>("-cmax");
 	}
 
-	if (min_count <= 1 || max_count > CBF_COUNTER_MAX) {
-		std::cerr << "Invalid k-mer count range, must be cmin > 1 and cmax < " << CBF_COUNTER_MAX
-		          << std::endl;
+	if (min_count <= 1 || max_count > std::numeric_limits<nthits::cbf_counter_t>::max() - 1) {
+		std::cerr << "Invalid k-mer count range (-cmin and -cmax)" << std::endl;
+		std::cerr << parser;
+		std::exit(1);
+	}
+
+	std::string out_type_str = parser.get("out_type");
+	if (out_type_str == "cbf") {
+		out_type = OutputType::COUNTING_BLOOM_FILTER;
+	} else if (out_type_str == "bf") {
+		if (parser.is_used("-cmax")) {
+			std::cerr << "Can't output BF when using max count threshold (-cmax)" << std::endl;
+			std::exit(1);
+		}
+		out_type = OutputType::BLOOM_FILTER;
+	} else if (out_type_str == "table") {
+		out_type = OutputType::HIT_TABLE;
+	} else {
+		std::cerr << "Invalid output data structure: " << out_type_str << std::endl;
 		std::exit(1);
 	}
 
@@ -132,7 +165,6 @@ ProgramArguments::ProgramArguments(int argc, char** argv)
 	histogram_path = parser.get("-f");
 	fpr = parser.get<double>("-p");
 	out_file = parser.get("-o");
-	out_bloom = parser.get<bool>("--out-bloom");
 	solid = parser.get<bool>("--solid");
 	long_mode = parser.get<bool>("--long-mode");
 
@@ -172,14 +204,14 @@ ProgramArguments::print()
 		std::cout << "[-k] k-mer length           : " << kmer_length << std::endl;
 		std::cout << "[-h] Hashes per k-mer       : " << num_hashes << std::endl;
 	}
-	if (fpr > 0 && out_bloom) {
+	if (fpr > 0 && out_is_filter()) {
 		std::cout << "[-p] Bloom filter FPR       : " << fpr << std::endl;
 	}
 	std::cout << "[-t] Number of threads      : " << num_threads << std::endl;
-	if (min_count > 0) {
+	if (has_min_count) {
 		std::cout << "[-cmin] Min. k-mer count    : " << min_count << std::endl;
 	}
-	if (max_count < CBF_COUNTER_MAX) {
+	if (has_max_count) {
 		std::cout << "[-cmax] Max. k-mer count    : " << max_count << std::endl;
 	}
 	std::cout << std::endl;

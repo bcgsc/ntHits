@@ -12,7 +12,7 @@
 #include "utils.hpp"
 
 namespace {
-#define PROCESS(HIT_INSERT, HIT_REMOVE)                                                            \
+#define PROCESS_MIN_MAX(HIT_INSERT, HIT_REMOVE)                                                    \
 	while (nthash.roll()) {                                                                        \
 		if (bf.contains_insert(nthash.hashes())) {                                                 \
 			auto count = cbf.insert_thresh_contains(nthash.hashes(), max_count) + 1U;              \
@@ -106,62 +106,60 @@ inline void
 process(
     const std::string& seq,
     const unsigned kmer_length,
-    const unsigned num_hashes,
     const unsigned min_count,
     const unsigned max_count,
     btllib::BloomFilter& bf,
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
     HitTable& hit_table)
 {
-	btllib::NtHash nthash(seq, num_hashes, kmer_length);
-	PROCESS(hit_table.insert(nthash.hashes()[0], seq.substr(nthash.get_pos(), nthash.get_k()));
-	        , hit_table.remove(nthash.hashes()[0]);)
+	btllib::NtHash nthash(seq, bf.get_hash_num(), kmer_length);
+	PROCESS_MIN_MAX(std::string kmer = seq.substr(nthash.get_pos(), nthash.get_k());
+	                hit_table.insert(nthash.hashes()[0], kmer);
+	                , hit_table.remove(nthash.hashes()[0]);)
 }
 
 inline void
 process(
     const std::string& seq,
     const std::string& seed,
-    const unsigned num_hashes,
     const unsigned min_count,
     const unsigned max_count,
     btllib::BloomFilter& bf,
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
     HitTable& hit_table)
 {
-	btllib::SeedNtHash nthash(seq, { seed }, num_hashes, seed.size());
-	PROCESS(hit_table.insert(nthash.hashes()[0], seq.substr(nthash.get_pos(), nthash.get_k()));
-	        , hit_table.remove(nthash.hashes()[0]);)
+	btllib::SeedNtHash nthash(seq, { seed }, bf.get_hash_num(), seed.size());
+	PROCESS_MIN_MAX(std::string kmer = seq.substr(nthash.get_pos(), nthash.get_k());
+	                hit_table.insert(nthash.hashes()[0], kmer);
+	                , hit_table.remove(nthash.hashes()[0]);)
 }
 
 inline void
 process(
     const std::string& seq,
     const unsigned kmer_length,
-    const unsigned num_hashes,
     const unsigned min_count,
     const unsigned max_count,
     btllib::BloomFilter& bf,
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
     btllib::CountingBloomFilter<cbf_counter_t>& hit_filter)
 {
-	btllib::NtHash nthash(seq, num_hashes, kmer_length);
-	PROCESS(hit_filter.insert(nthash.hashes());, hit_filter.clear(nthash.hashes());)
+	btllib::NtHash nthash(seq, bf.get_hash_num(), kmer_length);
+	PROCESS_MIN_MAX(hit_filter.insert(nthash.hashes());, hit_filter.clear(nthash.hashes());)
 }
 
 inline void
 process(
     const std::string& seq,
     const std::string& seed,
-    const unsigned num_hashes,
     const unsigned min_count,
     const unsigned max_count,
     btllib::BloomFilter& bf,
     btllib::CountingBloomFilter<cbf_counter_t>& cbf,
     btllib::CountingBloomFilter<cbf_counter_t>& hit_filter)
 {
-	btllib::SeedNtHash nthash(seq, { seed }, num_hashes, seed.size());
-	PROCESS(hit_filter.insert(nthash.hashes());, hit_filter.clear(nthash.hashes());)
+	btllib::SeedNtHash nthash(seq, { seed }, bf.get_hash_num(), seed.size());
+	PROCESS_MIN_MAX(hit_filter.insert(nthash.hashes());, hit_filter.clear(nthash.hashes());)
 }
 
 }
