@@ -1,5 +1,7 @@
 #include "args.hpp"
 #include "nthits.hpp"
+#include "nthits_min.hpp"
+#include "nthits_min_max.hpp"
 #include "user_interface.hpp"
 #include "utils.hpp"
 
@@ -16,12 +18,37 @@
 #include <string>
 #include <vector>
 
-#define PRINT_EXTRA_BF_STATS                                                                       \
-	if (args.verbosity > 1) {                                                                      \
-		std::cout << std::endl << "Distinct k-mers Bloom filter stats:" << std::endl;              \
-		print_bloom_filter_stats(bf.get_fpr(), args.fpr, bf.get_occupancy());                      \
-		std::cout << std::endl << "Intermediate counting Bloom filter stats:" << std::endl;        \
-		print_bloom_filter_stats(cbf.get_fpr(), args.fpr, cbf.get_occupancy());                    \
+#define INIT(CONSTRUCTOR_CALLS)                                                                    \
+	std::cout << "Initializing... " << std::flush;                                                 \
+	timer.start();                                                                                 \
+	CONSTRUCTOR_CALLS                                                                              \
+	timer.stop();                                                                                  \
+	timer.print_done();
+
+#define PROCESS(NTHITS_CALL)                                                                       \
+	std::cout << "Processing data... " << std::flush;                                              \
+	timer.start();                                                                                 \
+	for (const auto file : args.input_files) {                                                     \
+		btllib::SeqReader reader(file, get_flag(args.long_mode));                                  \
+		_Pragma("omp parallel shared(reader)") for (const auto& record : reader)                   \
+		{                                                                                          \
+			NTHITS_CALL                                                                            \
+		}                                                                                          \
+	}                                                                                              \
+	timer.stop();                                                                                  \
+	timer.print_done();
+
+#define SAVE(SAVE_CALL)                                                                            \
+	std::cout << "Writing file... " << std::flush;                                                 \
+	timer.start();                                                                                 \
+	SAVE_CALL                                                                                      \
+	timer.stop();                                                                                  \
+	timer.print_done();
+
+#define PRINT_BF_STATS(NAME, BF, MIN_VERBOSITY)                                                    \
+	if (args.verbosity > MIN_VERBOSITY) {                                                          \
+		std::cout << std::endl << "NAME stats:" << std::endl;                                      \
+		print_bloom_filter_stats(BF.get_fpr(), args.fpr, BF.get_occupancy());                      \
 		std::cout << std::endl;                                                                    \
 	}
 
@@ -46,118 +73,6 @@ load_histogram(const std::string& path)
 		hist.push_back(value);
 	}
 	return hist;
-}
-
-inline void
-kmers_cbf(const ProgramArguments& args, size_t bf_size, size_t cbf_size, size_t hits_size)
-{
-	Timer timer;
-	TIMER_START(timer, "Initializing Bloom filters")
-	btllib::BloomFilter bf(bf_size, args.num_hashes);
-	btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
-	btllib::CountingBloomFilter<nthits::cbf_counter_t> hits(hits_size, args.num_hashes);
-	TIMER_STOP(timer)
-	TIMER_START(timer, "Processing k-mers")
-	for (const auto file : args.input_files) {
-		btllib::SeqReader reader(file, get_flag(args.long_mode));
-#pragma omp parallel shared(reader)
-		for (const auto& record : reader) {
-			nthits::process(
-			    record.seq, args.kmer_length, args.min_count, args.max_count, bf, cbf, hits);
-		}
-	}
-	TIMER_STOP(timer)
-	PRINT_EXTRA_BF_STATS
-	if (args.verbosity > 0) {
-		std::cout << "Output Bloom filter stats:" << std::endl;
-		print_bloom_filter_stats(hits.get_fpr(), args.fpr, hits.get_occupancy());
-		std::cout << std::endl;
-	}
-	TIMER_START(timer, "Saving Bloom filter")
-	hits.save(args.out_file);
-	TIMER_STOP(timer)
-}
-
-inline void
-seeds_cbf(const ProgramArguments& args, size_t bf_size, size_t cbf_size, size_t hits_size)
-{
-	Timer timer;
-	TIMER_START(timer, "Initializing Bloom filters")
-	btllib::BloomFilter bf(bf_size, args.num_hashes);
-	btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
-	btllib::CountingBloomFilter<nthits::cbf_counter_t> hits(hits_size, args.num_hashes);
-	TIMER_STOP(timer)
-	TIMER_START(timer, "Processing k-mers")
-	for (const auto file : args.input_files) {
-		btllib::SeqReader reader(file, get_flag(args.long_mode));
-#pragma omp parallel shared(reader)
-		for (const auto& record : reader) {
-			for (const auto& seed : args.seeds) {
-				nthits::process(record.seq, seed, args.min_count, args.max_count, bf, cbf, hits);
-			}
-		}
-	}
-	TIMER_STOP(timer)
-	PRINT_EXTRA_BF_STATS
-	if (args.verbosity > 0) {
-		std::cout << "Output Bloom filter stats:" << std::endl;
-		print_bloom_filter_stats(hits.get_fpr(), args.fpr, hits.get_occupancy());
-		std::cout << std::endl;
-	}
-	TIMER_START(timer, "Saving Bloom filter")
-	hits.save(args.out_file);
-	TIMER_STOP(timer)
-}
-
-inline void
-kmers_table(const ProgramArguments& args, size_t bf_size, size_t cbf_size, size_t hits_size)
-{
-	Timer timer;
-	TIMER_START(timer, "Initializing Bloom filters")
-	btllib::BloomFilter bf(bf_size, args.num_hashes);
-	btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
-	nthits::HitTable hits(hits_size);
-	TIMER_STOP(timer)
-	TIMER_START(timer, "Processing k-mers")
-	for (const auto file : args.input_files) {
-		btllib::SeqReader reader(file, get_flag(args.long_mode));
-#pragma omp parallel shared(reader)
-		for (const auto& record : reader) {
-			for (const auto& seed : args.seeds) {
-				nthits::process(record.seq, seed, args.min_count, args.max_count, bf, cbf, hits);
-			}
-		}
-	}
-	TIMER_STOP(timer)
-	PRINT_EXTRA_BF_STATS
-	TIMER_START(timer, "Saving Bloom filter")
-	hits.save(args.out_file, args.min_count);
-	TIMER_STOP(timer)
-}
-
-inline void
-seeds_table(const ProgramArguments& args, size_t bf_size, size_t cbf_size, size_t hits_size)
-{
-	Timer timer;
-	TIMER_START(timer, "Initializing Bloom filters")
-	btllib::BloomFilter bf(bf_size, args.num_hashes);
-	btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
-	nthits::HitTable hits(hits_size);
-	TIMER_STOP(timer)
-	TIMER_START(timer, "Processing k-mers")
-	for (const auto file : args.input_files) {
-		btllib::SeqReader reader(file, get_flag(args.long_mode));
-#pragma omp parallel shared(reader)
-		for (const auto& record : reader) {
-			nthits::process(
-			    record.seq, args.kmer_length, args.min_count, args.max_count, bf, cbf, hits);
-		}
-	}
-	TIMER_STOP(timer)
-	PRINT_EXTRA_BF_STATS
-	TIMER_START(timer, "Saving Bloom filter")
-	hits.save(args.out_file, args.min_count);
-	TIMER_STOP(timer)
 }
 
 int
@@ -200,14 +115,162 @@ main(int argc, char** argv)
 		    args.verbosity);
 	}
 
-	if (args.out_type == OutputType::COUNTING_BLOOM_FILTER && !args.using_seeds()) {
-		kmers_cbf(args, bf_size, cbf_size, hit_size);
-	} else if (args.out_type == OutputType::COUNTING_BLOOM_FILTER && args.using_seeds()) {
-		seeds_cbf(args, bf_size, cbf_size, hit_size);
-	} else if (args.out_type == OutputType::HIT_TABLE && !args.using_seeds()) {
-		kmers_table(args, bf_size, cbf_size, hit_size);
-	} else if (args.out_type == OutputType::HIT_TABLE && args.using_seeds()) {
-		seeds_table(args, bf_size, cbf_size, hit_size);
+	Timer timer;
+	bool out_bf = args.out_type == OutputType::BLOOM_FILTER;
+	bool out_cbf = args.out_type == OutputType::COUNTING_BLOOM_FILTER;
+	bool out_table = args.out_type == OutputType::HIT_TABLE;
+	bool min = args.has_min_count && !args.has_max_count;
+	bool min_max = args.has_max_count;
+	bool no_thresh = !args.has_min_count && !args.has_max_count;
+	bool using_seeds = args.using_seeds();
+
+	if (out_bf && no_thresh && !using_seeds) {
+		INIT(btllib::KmerBloomFilter hits(hit_size, args.num_hashes, args.kmer_length);)
+		PROCESS(nthits::find_hits(record.seq, args.kmer_length, hits);)
+		PRINT_BF_STATS("Output BF", hits, 0)
+		SAVE(hits.save(args.out_file);)
+	}
+
+	if (out_bf && min && !using_seeds) {
+		INIT(btllib::BloomFilter bf(bf_size, args.num_hashes);
+		     btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
+		     btllib::KmerBloomFilter hits(hit_size, args.num_hashes, args.kmer_length);)
+		PROCESS(nthits::find_hits(record.seq, args.kmer_length, args.min_count, bf, cbf, hits);)
+		PRINT_BF_STATS("Distinct k-mers BF", bf, 1)
+		PRINT_BF_STATS("Intermediate CBF", cbf, 1)
+		PRINT_BF_STATS("Output BF", hits, 0)
+		SAVE(hits.save(args.out_file);)
+	}
+
+	if (out_bf && !min && using_seeds) {
+		INIT(btllib::BloomFilter hits(hit_size, args.num_hashes);)
+		PROCESS({
+			for (const auto& seed : args.seeds) {
+				nthits::find_hits(record.seq, seed, hits);
+			}
+		})
+		PRINT_BF_STATS("Output BF", hits, 0)
+		SAVE(hits.save(args.out_file);)
+	}
+
+	if (out_bf && min && using_seeds) {
+		INIT(btllib::BloomFilter bf(bf_size, args.num_hashes);
+		     btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
+		     btllib::BloomFilter hits(hit_size, args.num_hashes);)
+		PROCESS({
+			for (const auto& seed : args.seeds) {
+				nthits::find_hits(record.seq, seed, args.min_count, bf, cbf, hits);
+			}
+		})
+		PRINT_BF_STATS("Distinct seeds BF", bf, 1)
+		PRINT_BF_STATS("Intermediate CBF", cbf, 1)
+		PRINT_BF_STATS("Output BF", hits, 0)
+		SAVE(hits.save(args.out_file);)
+	}
+
+	if (out_cbf && no_thresh && !using_seeds) {
+		INIT(btllib::KmerCountingBloomFilter<nthits::cbf_counter_t> hits(
+		         hit_size, args.num_hashes, args.kmer_length);)
+		PROCESS(nthits::find_hits(record.seq, args.kmer_length, hits);)
+		PRINT_BF_STATS("Output BF", hits, 0)
+		SAVE(hits.save(args.out_file);)
+	}
+
+	if (out_cbf && min && !using_seeds) {
+		INIT(btllib::BloomFilter bf(bf_size, args.num_hashes);
+		     btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
+		     btllib::KmerCountingBloomFilter<nthits::cbf_counter_t> hits(
+		         hit_size, args.num_hashes, args.kmer_length);)
+		PROCESS(nthits::find_hits(record.seq, args.kmer_length, args.min_count, bf, cbf, hits);)
+		PRINT_BF_STATS("Distinct k-mers BF", bf, 1)
+		PRINT_BF_STATS("Intermediate CBF", cbf, 1)
+		PRINT_BF_STATS("Output BF", hits, 0)
+		SAVE(hits.save(args.out_file);)
+	}
+
+	if (out_cbf && min_max && !using_seeds) {
+		INIT(btllib::BloomFilter bf(bf_size, args.num_hashes);
+		     btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
+		     btllib::KmerCountingBloomFilter<nthits::cbf_counter_t> hits(
+		         hit_size, args.num_hashes, args.kmer_length);)
+		PROCESS({
+			nthits::find_hits(
+			    record.seq, args.kmer_length, args.min_count, args.max_count, bf, cbf, hits);
+		})
+		PRINT_BF_STATS("Distinct k-mers BF", bf, 1)
+		PRINT_BF_STATS("Intermediate CBF", cbf, 1)
+		PRINT_BF_STATS("Output BF", hits, 0)
+		SAVE(hits.save(args.out_file);)
+	}
+
+	if (out_cbf && no_thresh && using_seeds) {
+		INIT(btllib::CountingBloomFilter<nthits::cbf_counter_t> hits(hit_size, args.num_hashes);)
+		PROCESS({
+			for (const auto& seed : args.seeds) {
+				nthits::find_hits(record.seq, seed, hits);
+			}
+		})
+		PRINT_BF_STATS("Output BF", hits, 0)
+		SAVE(hits.save(args.out_file);)
+	}
+
+	if (out_cbf && min && using_seeds) {
+		INIT(btllib::BloomFilter bf(bf_size, args.num_hashes);
+		     btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
+		     btllib::CountingBloomFilter<nthits::cbf_counter_t> hits(hit_size, args.num_hashes);)
+		PROCESS({
+			for (const auto& seed : args.seeds) {
+				nthits::find_hits(record.seq, seed, args.min_count, bf, cbf, hits);
+			}
+		})
+		PRINT_BF_STATS("Distinct k-mers BF", bf, 1)
+		PRINT_BF_STATS("Intermediate CBF", cbf, 1)
+		PRINT_BF_STATS("Output BF", hits, 0)
+		SAVE(hits.save(args.out_file);)
+	}
+
+	if (out_cbf && min_max && using_seeds) {
+		INIT(btllib::BloomFilter bf(bf_size, args.num_hashes);
+		     btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
+		     btllib::CountingBloomFilter<nthits::cbf_counter_t> hits(hit_size, args.num_hashes);)
+		PROCESS({
+			for (const auto& seed : args.seeds) {
+				nthits::find_hits(record.seq, seed, args.min_count, args.max_count, bf, cbf, hits);
+			}
+		})
+		PRINT_BF_STATS("Distinct k-mers BF", bf, 1)
+		PRINT_BF_STATS("Intermediate CBF", cbf, 1)
+		PRINT_BF_STATS("Output BF", hits, 0)
+		SAVE(hits.save(args.out_file);)
+	}
+
+	if (out_table && no_thresh) {
+		INIT(nthits::HitTable hits(hit_size);)
+		PROCESS(nthits::find_hits(record.seq, args.kmer_length, hits);)
+		SAVE(hits.save(args.out_file, args.min_count);)
+	}
+
+	if (out_table && min) {
+		INIT(btllib::BloomFilter bf(bf_size, args.num_hashes);
+		     btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
+		     nthits::HitTable hits(hit_size);)
+		PROCESS(nthits::find_hits(record.seq, args.kmer_length, args.min_count, bf, cbf, hits);)
+		PRINT_BF_STATS("Distinct k-mers BF", bf, 1)
+		PRINT_BF_STATS("Intermediate CBF", cbf, 1)
+		SAVE(hits.save(args.out_file, args.min_count);)
+	}
+
+	if (out_table && min_max) {
+		INIT(btllib::BloomFilter bf(bf_size, args.num_hashes);
+		     btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
+		     nthits::HitTable hits(hit_size);)
+		PROCESS({
+			nthits::find_hits(
+			    record.seq, args.kmer_length, args.min_count, args.max_count, bf, cbf, hits);
+		})
+		PRINT_BF_STATS("Distinct k-mers BF", bf, 1)
+		PRINT_BF_STATS("Intermediate CBF", cbf, 1)
+		SAVE(hits.save(args.out_file, args.min_count);)
 	}
 
 	return 0;

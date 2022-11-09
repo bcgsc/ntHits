@@ -153,6 +153,10 @@ ProgramArguments::ProgramArguments(int argc, char** argv)
 		}
 		out_type = OutputType::BLOOM_FILTER;
 	} else if (out_type_str == "table") {
+		if (parser.is_used("-s")) {
+			std::cerr << "Can't output hit table when using spaced seeds (-s)" << std::endl;
+			std::exit(1);
+		}
 		out_type = OutputType::HIT_TABLE;
 	} else {
 		std::cerr << "Invalid output data structure: " << out_type_str << std::endl;
