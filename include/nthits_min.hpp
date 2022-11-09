@@ -12,6 +12,8 @@ namespace {
         if (cbf.insert_contains(nthash.hashes()) > min_count - 1) {                                \
           HIT_INSERT                                                                               \
         }                                                                                          \
+      } else {                                                                                     \
+        HIT_INSERT                                                                                 \
       }                                                                                            \
     }                                                                                              \
   }
