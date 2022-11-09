@@ -128,15 +128,15 @@ ProgramArguments::ProgramArguments(int argc, char** argv)
   }
 
   if (parser.is_used("-cmin")) {
-    has_min_count = true;
     min_count = parser.get<unsigned>("-cmin");
+    has_min_count = min_count > 1;
   }
   if (parser.is_used("-cmax")) {
     has_max_count = true;
     max_count = parser.get<unsigned>("-cmax");
   }
 
-  if (min_count <= 1 || max_count > std::numeric_limits<nthits::cbf_counter_t>::max() - 1) {
+  if (min_count < 1 || max_count > std::numeric_limits<nthits::cbf_counter_t>::max() - 1) {
     std::cerr << "Invalid k-mer count range (-cmin and -cmax)" << std::endl;
     std::cerr << parser;
     std::exit(1);

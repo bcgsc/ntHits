@@ -8,8 +8,8 @@ namespace {
 #define PROCESS_MIN(HIT_INSERT)                                                                    \
   while (nthash.roll()) {                                                                          \
     if (bf.contains_insert(nthash.hashes())) {                                                     \
-      if (min_count > 1) {                                                                         \
-        if (cbf.insert_contains(nthash.hashes()) > min_count - 1) {                                \
+      if (min_count > 2) {                                                                         \
+        if (cbf.insert_contains(nthash.hashes()) >= min_count - 1) {                               \
           HIT_INSERT                                                                               \
         }                                                                                          \
       } else {                                                                                     \
