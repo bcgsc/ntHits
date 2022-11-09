@@ -97,8 +97,12 @@ main(int argc, char** argv)
   size_t bf_size, cbf_size, hit_size;
   bf_size = hist[1] * 7 / 8;
   cbf_size = (hist[1] - hist[2]) * 6;
-  if (args.out_is_filter()) {
-    hit_size = nthits::get_bf_size(hit_count, args.num_hashes, args.seeds.size(), args.fpr);
+  size_t optimal_bytes =
+    nthits::get_bf_size(hit_count, args.num_hashes, args.seeds.size(), args.fpr);
+  if (args.out_type == OutputType::BLOOM_FILTER) {
+    hit_size = optimal_bytes / 8;
+  } else if (args.out_type == OutputType::COUNTING_BLOOM_FILTER) {
+    hit_size = optimal_bytes;
   } else {
     hit_size = hit_count * 3;
   }
