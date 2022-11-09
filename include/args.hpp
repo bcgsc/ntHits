@@ -217,6 +217,9 @@ ProgramArguments::print()
   if (has_max_count) {
     std::cout << "[-cmax] Max. k-mer count    : " << max_count << std::endl;
   }
+  const char* out_types[] = { "HIT TABLE", "BLOOM FILTER", "COUNTING BLOOM FILTER" };
+  std::cout << "Output format               : " << out_types[out_type] << std::endl;
+  std::cout << "Output path                 : " << out_file << std::endl;
   std::cout << std::endl;
 }
 
