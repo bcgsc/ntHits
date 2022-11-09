@@ -28,7 +28,7 @@ find_hits(const std::string& seq,
           btllib::KmerBloomFilter& hit_filter)
 {
   SEQ_LEN_GUARD(kmer_length)
-  btllib::NtHash nthash(seq, kmer_length, bf.get_hash_num());
+  btllib::NtHash nthash(seq, bf.get_hash_num(), kmer_length);
   PROCESS_MIN(hit_filter.insert(nthash.hashes());)
 }
 
