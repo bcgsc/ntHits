@@ -47,7 +47,7 @@
 
 #define PRINT_BF_STATS(NAME, BF, MIN_VERBOSITY)                                                    \
   if (args.verbosity > MIN_VERBOSITY) {                                                            \
-    std::cout << std::endl << "NAME stats:" << std::endl;                                          \
+    std::cout << std::endl << NAME << " stats:" << std::endl;                                      \
     print_bloom_filter_stats(BF.get_fpr(), args.fpr, BF.get_occupancy());                          \
     std::cout << std::endl;                                                                        \
   }
