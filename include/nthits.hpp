@@ -8,8 +8,6 @@
 
 #include "hit_table.hpp"
 
-namespace {
-
 #define SEQ_LEN_GUARD(K)                                                                           \
   if (seq.size() < K) {                                                                            \
     return;                                                                                        \
@@ -19,8 +17,6 @@ namespace {
   while (nthash.roll()) {                                                                          \
     bf.insert(nthash.hashes());                                                                    \
   }
-
-}
 
 namespace nthits {
 

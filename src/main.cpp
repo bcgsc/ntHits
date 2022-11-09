@@ -55,6 +55,7 @@
 inline unsigned
 get_flag(bool long_mode)
 {
+  SEQ
   if (long_mode) {
     return btllib::SeqReader::Flag::LONG_MODE;
   } else {

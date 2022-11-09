@@ -3,7 +3,6 @@
 
 #include "nthits.hpp"
 
-namespace {
 #define PROCESS_MIN_MAX(HIT_INSERT, HIT_REMOVE)                                                    \
   while (nthash.roll()) {                                                                          \
     if (bf.contains_insert(nthash.hashes())) {                                                     \
@@ -15,8 +14,6 @@ namespace {
       }                                                                                            \
     }                                                                                              \
   }
-
-}
 
 namespace nthits {
 

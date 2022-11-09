@@ -4,7 +4,6 @@
 #include "hit_table.hpp"
 #include "nthits.hpp"
 
-namespace {
 #define PROCESS_MIN(HIT_INSERT)                                                                    \
   while (nthash.roll()) {                                                                          \
     if (bf.contains_insert(nthash.hashes())) {                                                     \
@@ -13,7 +12,6 @@ namespace {
       }                                                                                            \
     }                                                                                              \
   }
-}
 
 namespace nthits {
 
