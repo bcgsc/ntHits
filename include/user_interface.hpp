@@ -105,9 +105,12 @@ print_updated_params(size_t hit_count,
     std::cout << "- Estimated error k-mer threshold         : " << hit_cap << std::endl;
   }
   if (verbosity > 1) {
-    std::cout << "- Distinct k-mers Bloom filter size       : " << bf_size << " bytes" << std::endl;
-    std::cout << "- Intermediate counting Bloom filter size : " << cbf_size << " bytes"
-              << std::endl;
+    if (bf_size > 1)
+      std::cout << "- Distinct k-mers Bloom filter size       : " << bf_size << " bytes"
+                << std::endl;
+    if (cbf_size > 1)
+      std::cout << "- Counting Bloom filter size              : " << cbf_size << " bytes"
+                << std::endl;
   }
   if (out_bloom) {
     std::cout << "- Output Bloom filter size                : " << hit_size << " bytes"

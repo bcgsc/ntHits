@@ -95,8 +95,16 @@ main(int argc, char** argv)
   bool hit_cap_changed = given_hit_cap != args.min_count;
 
   size_t bf_size, cbf_size, hit_size;
-  bf_size = hist[1] * 7 / 8;
-  cbf_size = (hist[1] - hist[2]) * 6;
+  if (args.min_count > 1) {
+    bf_size = nthits::get_bf_size(hist[1], args.num_hashes, args.seeds.size(), args.fpr) / 8;
+  } else {
+    bf_size = 1;
+  }
+  if (args.min_count > 2 || args.has_max_count) {
+    cbf_size = nthits::get_bf_size(hist[1] - hist[2], args.num_hashes, args.seeds.size(), args.fpr);
+  } else {
+    cbf_size = 1;
+  }
   size_t optimal_bytes =
     nthits::get_bf_size(hit_count, args.num_hashes, args.seeds.size(), args.fpr);
   if (args.out_type == OutputType::BLOOM_FILTER) {

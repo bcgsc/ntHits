@@ -5,8 +5,11 @@
 
 #define PROCESS_MIN_MAX(HIT_INSERT, HIT_REMOVE)                                                    \
   while (nthash.roll()) {                                                                          \
-    if (bf.contains_insert(nthash.hashes())) {                                                     \
-      auto count = cbf.insert_thresh_contains(nthash.hashes(), max_count) + 1U;                    \
+    if (min_count == 1 || bf.contains_insert(nthash.hashes())) {                                   \
+      auto count = cbf.insert_thresh_contains(nthash.hashes(), max_count);                         \
+      if (min_count > 1) {                                                                         \
+        ++count;                                                                                   \
+      }                                                                                            \
       if (count == max_count + 1) {                                                                \
         HIT_REMOVE                                                                                 \
       } else if (count >= min_count && count <= max_count) {                                       \
