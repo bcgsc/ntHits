@@ -61,7 +61,7 @@ ProgramArguments::ProgramArguments(int argc, char** argv)
     .required();
 
   parser.add_argument("-cmin", "--min-count")
-    .help("Minimum k-mer count (>=1)")
+    .help("Minimum k-mer count (>=1), ignored if using --solid")
     .default_value(1U)
     .scan<'u', unsigned>();
 
@@ -94,7 +94,7 @@ ProgramArguments::ProgramArguments(int argc, char** argv)
     .scan<'u', unsigned>();
 
   parser.add_argument("--solid")
-    .help("Output the solid k-mers (non-erroneous k-mers)")
+    .help("Automatically tune 'cmin' to filter out erroneous k-mers")
     .default_value(false)
     .implicit_value(true);
 
