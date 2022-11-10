@@ -56,9 +56,17 @@ ProgramArguments::ProgramArguments(int argc, char** argv)
   parser.add_description(PROGRAM_DESCRIPTION);
   parser.add_epilog(PROGRAM_COPYRIGHT);
 
+  parser.add_argument("files").help("Input files").required().remaining();
+
   parser.add_argument("-f", "--frequencies")
     .help("Frequency histogram file (e.g. from ntCard)")
     .required();
+
+  parser.add_argument("out_type")
+    .help("Output format: Bloom filter 'bf', counting Bloom filter ('cbf'), or table ('table')")
+    .required();
+
+  parser.add_argument("-o", "--out-file").help("Output file's name").required();
 
   parser.add_argument("-cmin", "--min-count")
     .help("Minimum k-mer count (>=1), ignored if using --solid")
@@ -75,6 +83,9 @@ ProgramArguments::ProgramArguments(int argc, char** argv)
     .default_value(64U)
     .scan<'u', unsigned>();
 
+  parser.add_argument("-s", "--seeds")
+    .help("If specified, use spaced seeds (separate with commas, e.g. 10101,11011)");
+
   parser.add_argument("-h", "--num-hashes")
     .help("Number of hashes to generate per k-mer/spaced seed")
     .default_value(3U)
@@ -84,9 +95,6 @@ ProgramArguments::ProgramArguments(int argc, char** argv)
     .help("Target Bloom filter error rate")
     .default_value((double)0.0001)
     .scan<'g', double>();
-
-  parser.add_argument("-s", "--seeds")
-    .help("If specified, use spaced seeds (separate with commas, e.g. 10101,11011)");
 
   parser.add_argument("-t", "--threads")
     .help("Number of parallel threads")
@@ -110,14 +118,6 @@ ProgramArguments::ProgramArguments(int argc, char** argv)
     .default_value(false)
     .implicit_value(true)
     .nargs(0);
-
-  parser.add_argument("-o", "--out-file").help("Output file's name").required();
-
-  parser.add_argument("out_type")
-    .help("Output format: Bloom filter 'bf', counting Bloom filter ('cbf'), or table ('table')")
-    .required();
-
-  parser.add_argument("files").help("Input files").required().remaining();
 
   try {
     parser.parse_args(argc, argv);
