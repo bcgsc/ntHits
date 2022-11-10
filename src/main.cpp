@@ -11,8 +11,6 @@
 #include <btllib/nthash.hpp>
 #include <btllib/seq_reader.hpp>
 #include <cmath>
-#include <fstream>
-#include <iomanip>
 #include <iostream>
 #include <omp.h>
 #include <string>

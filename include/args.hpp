@@ -56,8 +56,6 @@ ProgramArguments::ProgramArguments(int argc, char** argv)
   parser.add_description(PROGRAM_DESCRIPTION);
   parser.add_epilog(PROGRAM_COPYRIGHT);
 
-  parser.add_argument("files").help("Input files").required().remaining();
-
   parser.add_argument("-f", "--frequencies")
     .help("Frequency histogram file (e.g. from ntCard)")
     .required();
@@ -118,6 +116,8 @@ ProgramArguments::ProgramArguments(int argc, char** argv)
     .default_value(false)
     .implicit_value(true)
     .nargs(0);
+
+  parser.add_argument("files").help("Input files").required().remaining();
 
   try {
     parser.parse_args(argc, argv);
