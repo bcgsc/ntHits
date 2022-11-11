@@ -60,19 +60,6 @@ get_flag(bool long_mode)
   }
 }
 
-inline std::vector<uint64_t>
-load_histogram(const std::string& path)
-{
-  std::vector<uint64_t> hist;
-  std::ifstream hist_file(path);
-  std::string freq;
-  uint64_t value;
-  while (hist_file >> freq >> value) {
-    hist.push_back(value);
-  }
-  return hist;
-}
-
 int
 main(int argc, char** argv)
 {
@@ -86,7 +73,7 @@ main(int argc, char** argv)
 
   omp_set_num_threads(args.num_threads);
 
-  auto hist = load_histogram(args.histogram_path);
+  auto hist = nthits::load_ntcard_histogram(args.histogram_path);
   size_t hit_count;
   unsigned given_hit_cap = args.min_count;
   nthits::get_thresholds(hist, args.solid, hit_count, args.min_count, args.max_count);

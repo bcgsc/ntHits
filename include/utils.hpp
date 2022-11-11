@@ -1,6 +1,7 @@
 #ifndef NTHITS_UTILS_HPP
 #define NTHITS_UTILS_HPP
 
+#include <fstream>
 #include <stdint.h>
 #include <string>
 #include <vector>
@@ -40,6 +41,19 @@ to_canonical(std::string& bmer)
       bmer[l_idx] = tmp;
     }
   }
+}
+
+inline std::vector<uint64_t>
+load_ntcard_histogram(const std::string& path)
+{
+  std::vector<uint64_t> hist;
+  std::ifstream hist_file(path);
+  std::string freq;
+  uint64_t value;
+  while (hist_file >> freq >> value) {
+    hist.push_back(value);
+  }
+  return hist;
 }
 
 void
