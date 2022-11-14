@@ -146,10 +146,6 @@ ProgramArguments::ProgramArguments(int argc, char** argv)
   if (out_type_str == "cbf") {
     out_type = OutputType::COUNTING_BLOOM_FILTER;
   } else if (out_type_str == "bf") {
-    if (parser.is_used("-cmax")) {
-      std::cerr << "Can't output BF when using max count threshold (-cmax)" << std::endl;
-      std::exit(1);
-    }
     out_type = OutputType::BLOOM_FILTER;
   } else if (out_type_str == "table") {
     if (parser.is_used("-s")) {

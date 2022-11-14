@@ -37,7 +37,7 @@
   timer.print_done();
 
 #define SAVE(SAVE_CALL)                                                                            \
-  std::cout << "Writing file... " << std::flush;                                                   \
+  std::cout << "Saving output... " << std::flush;                                                  \
   timer.start();                                                                                   \
   SAVE_CALL                                                                                        \
   timer.stop();                                                                                    \
@@ -162,6 +162,39 @@ main(int argc, char** argv)
     PRINT_BF_STATS("Intermediate CBF", cbf, 1)
     PRINT_BF_STATS("Output BF", hits, 0)
     SAVE(hits.save(args.out_file);)
+  }
+
+  if (out_bf && min_max && !using_seeds) {
+    INIT(btllib::BloomFilter bf(bf_size, args.num_hashes);
+         btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
+         btllib::KmerBloomFilter hits(hit_size, args.num_hashes, args.kmer_length);
+         btllib::KmerBloomFilter excludes(hit_size, args.num_hashes, args.kmer_length);)
+    PROCESS(
+      nthits::find_hits(
+        record.seq, args.kmer_length, args.min_count, args.max_count, bf, cbf, hits, excludes);)
+    PRINT_BF_STATS("Distinct k-mers BF", bf, 1)
+    PRINT_BF_STATS("Intermediate CBF", cbf, 1)
+    PRINT_BF_STATS("Hit k-mers BF", hits, 0)
+    PRINT_BF_STATS("Excluded k-mers BF", excludes, 0)
+    SAVE(hits.save(args.out_file); excludes.save(args.out_file);)
+  }
+
+  if (out_bf && min_max && using_seeds) {
+    INIT(btllib::BloomFilter bf(bf_size, args.num_hashes);
+         btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
+         btllib::BloomFilter hits(hit_size, args.num_hashes);
+         btllib::BloomFilter excludes(hit_size, args.num_hashes);)
+    PROCESS({
+      for (const auto& seed : args.seeds) {
+        nthits::find_hits(
+          record.seq, seed, args.min_count, args.max_count, bf, cbf, hits, excludes);
+      }
+    })
+    PRINT_BF_STATS("Distinct seeds BF", bf, 1)
+    PRINT_BF_STATS("Intermediate CBF", cbf, 1)
+    PRINT_BF_STATS("Hit seeds BF", hits, 0)
+    PRINT_BF_STATS("Excluded seeds BF", excludes, 0)
+    SAVE(hits.save(args.out_file); excludes.save(args.out_file);)
   }
 
   if (out_cbf && no_thresh && !using_seeds) {

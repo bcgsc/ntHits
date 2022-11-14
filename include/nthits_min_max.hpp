@@ -27,6 +27,36 @@ find_hits(const std::string& seq,
           const unsigned max_count,
           btllib::BloomFilter& bf,
           btllib::CountingBloomFilter<cbf_counter_t>& cbf,
+          btllib::KmerBloomFilter& hits,
+          btllib::KmerBloomFilter& excludes)
+{
+  SEQ_LEN_GUARD(kmer_length)
+  btllib::NtHash nthash(seq, bf.get_hash_num(), kmer_length);
+  PROCESS_MIN_MAX(hits.insert(nthash.hashes());, excludes.insert(nthash.hashes());)
+}
+
+inline void
+find_hits(const std::string& seq,
+          const std::string& seed,
+          const unsigned min_count,
+          const unsigned max_count,
+          btllib::BloomFilter& bf,
+          btllib::CountingBloomFilter<cbf_counter_t>& cbf,
+          btllib::BloomFilter& hits,
+          btllib::BloomFilter& excludes)
+{
+  SEQ_LEN_GUARD(seed.size())
+  btllib::SeedNtHash nthash(seq, { seed }, bf.get_hash_num(), seed.size());
+  PROCESS_MIN_MAX(hits.insert(nthash.hashes());, excludes.insert(nthash.hashes());)
+}
+
+inline void
+find_hits(const std::string& seq,
+          const unsigned kmer_length,
+          const unsigned min_count,
+          const unsigned max_count,
+          btllib::BloomFilter& bf,
+          btllib::CountingBloomFilter<cbf_counter_t>& cbf,
           btllib::KmerCountingBloomFilter<cbf_counter_t>& hit_filter)
 {
   SEQ_LEN_GUARD(kmer_length)
