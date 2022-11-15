@@ -8,11 +8,10 @@ jobs:
   - checkout: self
     persistCredentials: true
     submodules: true
-    
-  - script: echo "##vso[task.prependpath]$CONDA/bin"
-    displayName: Add conda to PATH
-    
-  - script: conda create --yes --quiet --name nthits
+
+  - script: |
+      conda create --yes --quiet --name nthits
+      echo "##vso[task.prependpath]$CONDA/bin"
     displayName: Create Anaconda environment
     
   - script: |
@@ -31,10 +30,7 @@ jobs:
   displayName: mac-latest
   pool:
     vmImage: 'macOS-latest'
-    
-  - script: 
-    displayName: Add conda to PATH
-    
+
   - script: |
       echo "##vso[task.prependpath]$CONDA/bin"
       conda create --yes --quiet --name nthits
