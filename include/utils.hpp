@@ -1,6 +1,7 @@
 #ifndef NTHITS_UTILS_HPP
 #define NTHITS_UTILS_HPP
 
+#include <cmath>
 #include <fstream>
 #include <stdint.h>
 #include <string>

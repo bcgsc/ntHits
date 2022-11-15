@@ -81,12 +81,12 @@ main(int argc, char** argv)
 
   size_t bf_size, cbf_size, hit_size;
   if (args.min_count > 1) {
-    bf_size = nthits::get_bf_size(hist[1], args.num_hashes, args.seeds.size(), args.fpr) / 8;
+    bf_size = nthits::get_bf_size(hist[1], args.num_hashes, args.seeds.size(), args.fpr) / 240;
   } else {
     bf_size = 1;
   }
   if (args.min_count > 2 || args.has_max_count) {
-    cbf_size = nthits::get_bf_size(hist[1] - hist[2], args.num_hashes, args.seeds.size(), args.fpr);
+    cbf_size = nthits::get_bf_size(hist[1] - hist[2], args.num_hashes, args.seeds.size(), args.fpr) / 30;
   } else {
     cbf_size = 1;
   }
