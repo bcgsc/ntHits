@@ -11,13 +11,9 @@ jobs:
   - script: |
       echo "##vso[task.prependpath]$CONDA/bin"
       conda create --yes --quiet --name nthits
+      conda install --yes -c conda-forge -c bioconda --file requirements.txt
     displayName: Create Anaconda environment
-    
-  - script: |
-      conda activate nthits
-      conda install --yes --file requirements.txt
-    displayName: Install dependencies
-    
+
   - script: |
       conda activate nthits
       meson setup build 
@@ -37,13 +33,9 @@ jobs:
   - script: |
       echo "##vso[task.prependpath]$CONDA/bin"
       conda create --yes --quiet --name nthits
+      conda install --yes -c conda-forge -c bioconda --file requirements.txt
     displayName: Create Anaconda environment
-    
-  - script: |
-      conda activate nthits
-      conda install --yes --file requirements.txt
-    displayName: Install dependencies
-    
+
   - script: |
       conda activate nthits
       meson setup build 
