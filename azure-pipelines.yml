@@ -1,26 +1,53 @@
 jobs:
+
 - job: linux
   pool:
-    vmImage: Ubuntu 16.04
+    vmImage: 'ubuntu-22.04'
+   
   steps:
+  - checkout: self
+    persistCredentials: true
+    submodules: true
+    
+  - script: echo "##vso[task.prependpath]$CONDA/bin"
+    displayName: Add conda to PATH
+    
+  - script: conda create --yes --quiet --name nthits
+    displayName: Create Anaconda environment
+    
   - script: |
-      sudo apt-get update -qq
-      sudo apt-get install -qq software-properties-common
-      sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-      sudo apt-get update -qq
-      sudo apt-get install -qq autoconf automake gcc g++ make
-    displayName: Install common
+      conda activate nthits
+      conda install --yes --file requirements.txt
+    displayName: Install dependencies
+    
   - script: |
-      ./autogen.sh
-      ./configure
-      make distcheck
-    displayName: Compiling ntHits
+      conda activate nthits
+      meson setup build 
+      cd build
+      ninja && ninja test
+    displayName: Compile and test ntHits
+
+- job:
+  displayName: mac-latest
+  pool:
+    vmImage: 'macOS-latest'
+    
+  - script: 
+    displayName: Add conda to PATH
+    
   - script: |
-      curl https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-      sudo apt-add-repository "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-7 main"
-      sudo apt-get update
-      sudo apt-get install -y --no-install-recommends clang-format-7
-      sudo ln -s clang-format-7 /usr/bin/clang-format
-    displayName: Install clang-format
-  - script: make clang-format
-    displayName: Run clang-format
+      echo "##vso[task.prependpath]$CONDA/bin"
+      conda create --yes --quiet --name nthits
+    displayName: Create Anaconda environment
+    
+  - script: |
+      conda activate nthits
+      conda install --yes --file requirements.txt
+    displayName: Install dependencies
+    
+  - script: |
+      conda activate nthits
+      meson setup build 
+      cd build
+      ninja && ninja test
+    displayName: Compile and test ntHits
