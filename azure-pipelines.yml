@@ -6,12 +6,11 @@ jobs:
    
   steps:
   - checkout: self
-    persistCredentials: true
     submodules: true
 
   - script: |
-      conda create --yes --quiet --name nthits
       echo "##vso[task.prependpath]$CONDA/bin"
+      conda create --yes --quiet --name nthits
     displayName: Create Anaconda environment
     
   - script: |
@@ -33,7 +32,6 @@ jobs:
   
   steps:
   - checkout: self
-    persistCredentials: true
     submodules: true
 
   - script: |
