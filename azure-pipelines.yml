@@ -12,7 +12,8 @@ jobs:
       echo "##vso[task.prependpath]$CONDA/bin"
       conda create --yes --quiet --name nthits
       source activate nthits
-      conda install --yes -c conda-forge -c bioconda --file requirements.txt
+      conda install --yes -c conda-forge mamba python=3.9
+      mamba install --yes -c conda-forge -c bioconda --file requirements.txt
     displayName: Create Anaconda environment
 
   - script: |
@@ -35,7 +36,8 @@ jobs:
       echo "##vso[task.prependpath]$CONDA/bin"
       conda create --yes --quiet --name nthits
       source activate nthits
-      conda install --yes -c conda-forge -c bioconda --file requirements.txt
+      conda install --yes -c conda-forge mamba python=3.9
+      mamba install --yes -c conda-forge -c bioconda --file requirements.txt
     displayName: Create Anaconda environment
 
   - script: |
