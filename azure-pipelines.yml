@@ -1,28 +1,33 @@
 jobs:
 
-- job: linux
+- job: Linux
   pool:
-    vmImage: 'ubuntu-22.04'
+    vmImage: 'ubuntu-latest'
    
   steps:
   - checkout: self
     submodules: true
-
-  - script: |
-      echo "##vso[task.prependpath]$CONDA/bin"
-      conda create --yes --quiet --name nthits
-      conda install --yes -c conda-forge -c bioconda --file requirements.txt
+  
+  - script: echo "##vso[task.prependpath]$CONDA/bin"
+    displayName: Add conda to PATH
+  
+  - script: conda create --yes --quiet --name nthits
     displayName: Create Anaconda environment
 
   - script: |
-      conda activate nthits
+      source activate nthits
+      conda install --yes -c conda-forge -c bioconda --file requirements.txt
+    displayName: Install dependencies
+
+  - script: |
+      source activate nthits
       meson setup build 
       cd build
       ninja && ninja test
     displayName: Compile and test ntHits
 
 - job:
-  displayName: mac-latest
+  displayName: MacOS
   pool:
     vmImage: 'macOS-latest'
   
@@ -30,14 +35,19 @@ jobs:
   - checkout: self
     submodules: true
 
-  - script: |
-      echo "##vso[task.prependpath]$CONDA/bin"
-      conda create --yes --quiet --name nthits
-      conda install --yes -c conda-forge -c bioconda --file requirements.txt
+  - script: echo "##vso[task.prependpath]$CONDA/bin"
+    displayName: Add conda to PATH
+  
+  - script: conda create --yes --quiet --name nthits
     displayName: Create Anaconda environment
 
   - script: |
-      conda activate nthits
+      source activate nthits
+      conda install --yes -c conda-forge -c bioconda --file requirements.txt
+    displayName: Install dependencies
+
+  - script: |
+      source activate nthits
       meson setup build 
       cd build
       ninja && ninja test
