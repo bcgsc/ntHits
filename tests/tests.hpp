@@ -84,7 +84,6 @@ public:
     return true;
   }
 
-  bool check_hit_table(nthits::HitTable& table) { return true; }
 };
 
 #endif

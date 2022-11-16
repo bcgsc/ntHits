@@ -68,9 +68,12 @@ public:
     }
   }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
   void remove(const uint64_t hash_value)
   { // TODO
   }
+#pragma GCC diagnostic pop
 
   void save(const std::string& file_path, const unsigned min_count)
   {

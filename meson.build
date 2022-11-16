@@ -3,7 +3,7 @@ project(
     'cpp',
     version: '0.0.1',
     license: 'MIT',
-    default_options: ['cpp_std=c++17', 'warning_level=3']
+    default_options: ['cpp_std=c++17', 'warning_level=3', 'werror=true']
 )
 
 compiler = meson.get_compiler('cpp')
