@@ -1,8 +1,8 @@
 jobs:
 
-- job: linux
+- job: Linux
   pool:
-    vmImage: 'ubuntu-22.04'
+    vmImage: 'ubuntu-latest'
    
   steps:
   - checkout: self
@@ -27,7 +27,7 @@ jobs:
     displayName: Compile and test ntHits
 
 - job:
-  displayName: mac-latest
+  displayName: MacOS
   pool:
     vmImage: 'macOS-latest'
   
