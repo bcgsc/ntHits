@@ -94,9 +94,9 @@ main(int argc, char** argv)
   std::string kmer;
 
   if (!args.silent && args.is_cbf) {
-    TIMER_START(timer, "Loading Bloom filter")
+    timer.start("Loading Bloom filter");
     btllib::CountingBloomFilter<nthits::cbf_counter_t> bf(args.bf_path);
-    TIMER_STOP(timer);
+    timer.stop();
     print_bloom_filter_stats(bf.get_fpr(), 1.0, bf.get_occupancy());
     std::cout << std::endl << "> " << std::flush;
     while (std::cin >> kmer) {
@@ -113,9 +113,9 @@ main(int argc, char** argv)
     }
   }
   if (!args.silent && !args.is_cbf) {
-    TIMER_START(timer, "Loading Bloom filter")
+    timer.start("Loading Bloom filter");
     btllib::BloomFilter bf(args.bf_path);
-    TIMER_STOP(timer)
+    timer.stop();
     print_bloom_filter_stats(bf.get_fpr(), 1.0, bf.get_occupancy());
     std::cout << std::endl << "> " << std::flush;
     while (std::cin >> kmer) {

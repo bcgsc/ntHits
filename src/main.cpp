@@ -17,15 +17,12 @@
 #include <vector>
 
 #define INIT(CONSTRUCTOR_CALLS)                                                                    \
-  std::cout << "Initializing... " << std::flush;                                                   \
-  timer.start();                                                                                   \
+  timer.start("Initializing");                                                                     \
   CONSTRUCTOR_CALLS                                                                                \
-  timer.stop();                                                                                    \
-  timer.print_done();
+  timer.stop();
 
 #define PROCESS(NTHITS_CALL)                                                                       \
-  std::cout << "Processing data... " << std::flush;                                                \
-  timer.start();                                                                                   \
+  timer.start("Processing data");                                                                  \
   for (const auto file : args.input_files) {                                                       \
     btllib::SeqReader reader(file, get_flag(args.long_mode));                                      \
     _Pragma("omp parallel shared(reader)") for (const auto& record : reader)                       \
@@ -33,15 +30,12 @@
       NTHITS_CALL                                                                                  \
     }                                                                                              \
   }                                                                                                \
-  timer.stop();                                                                                    \
-  timer.print_done();
+  timer.stop();
 
 #define SAVE(SAVE_CALL)                                                                            \
-  std::cout << "Saving output... " << std::flush;                                                  \
-  timer.start();                                                                                   \
+  timer.start("Saving output");                                                                    \
   SAVE_CALL                                                                                        \
-  timer.stop();                                                                                    \
-  timer.print_done();
+  timer.stop();
 
 #define PRINT_BF_STATS(NAME, BF, MIN_VERBOSITY)                                                    \
   if (args.verbosity > MIN_VERBOSITY) {                                                            \
