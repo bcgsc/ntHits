@@ -6,6 +6,7 @@
 #include <thread>
 
 #include "human_readable_strings.hpp"
+#include "nthits.hpp"
 
 #define LOGO                                                                                       \
   "       _          _ _              \n"                                                          \
@@ -83,7 +84,7 @@ public:
 void
 print_logo()
 {
-  std::cout << LOGO << "\tv" << PROGRAM_VERSION << std::endl << std::endl;
+  std::cout << LOGO << "\tv" << nthits::VERSION << std::endl << std::endl;
 }
 
 void

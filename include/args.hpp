@@ -2,7 +2,7 @@
 #define NTHITS_ARGS_HPP
 
 #define PROGRAM_NAME "ntHits"
-#define PROGRAM_VERSION "0.0.1"
+#define PROGRAM_VERSION nthits::VERSION
 #define PROGRAM_DESCRIPTION "Filters k-mers based on counts (cmin <= count <= cmax) in input files"
 #define PROGRAM_COPYRIGHT "Copyright 2022 Canada's Michael Smith Genome Science Centre"
 

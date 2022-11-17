@@ -1,5 +1,5 @@
 #define PROGRAM_NAME "ntHits-BFQ"
-#define PROGRAM_VERSION "0.0.1"
+#define PROGRAM_VERSION nthits::VERSION
 #define PROGRAM_DESCRIPTION "Query tool for ntHits' output Bloom filter"
 #define PROGRAM_COPYRIGHT "Copyright 2022 Canada's Michael Smith Genome Science Centre"
 

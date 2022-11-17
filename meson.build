@@ -6,6 +6,14 @@ project(
     default_options: ['cpp_std=c++17', 'warning_level=3', 'werror=true']
 )
 
+configure_file(
+  input : 'include/nthits.hpp',
+  output : 'nthits.hpp',
+  configuration : {
+    'PROJECT_VERSION' : meson.project_version()
+  }
+)
+
 compiler = meson.get_compiler('cpp')
 
 dependencies = [
