@@ -70,7 +70,13 @@ main(int argc, char** argv)
   auto hist = nthits::load_ntcard_histogram(args.histogram_path);
   size_t hit_count, ex_count;
   unsigned given_hit_cap = args.min_count;
-  nthits::get_thresholds(hist, args.solid, hit_count, ex_count, args.min_count, args.max_count);
+  nthits::get_thresholds(hist,
+                         args.solid,
+                         args.out_type == OutputType::BLOOM_FILTER,
+                         hit_count,
+                         ex_count,
+                         args.min_count,
+                         args.max_count);
   bool hit_cap_changed = given_hit_cap != args.min_count;
 
   size_t bf_size, cbf_size, hit_size;
