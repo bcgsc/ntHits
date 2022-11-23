@@ -68,9 +68,9 @@ main(int argc, char** argv)
   omp_set_num_threads(args.num_threads);
 
   auto hist = nthits::load_ntcard_histogram(args.histogram_path);
-  size_t hit_count;
+  size_t hit_count, ex_count;
   unsigned given_hit_cap = args.min_count;
-  nthits::get_thresholds(hist, args.solid, hit_count, args.min_count, args.max_count);
+  nthits::get_thresholds(hist, args.solid, hit_count, ex_count, args.min_count, args.max_count);
   bool hit_cap_changed = given_hit_cap != args.min_count;
 
   size_t bf_size, cbf_size, hit_size;
@@ -160,10 +160,11 @@ main(int argc, char** argv)
   }
 
   if (out_bf && min_max && !using_seeds) {
+    size_t ex_size = nthits::get_bf_size(ex_count, args.num_hashes, args.seeds.size(), args.fpr);
     INIT(btllib::BloomFilter bf(bf_size, args.num_hashes);
          btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
          btllib::KmerBloomFilter hits(hit_size, args.num_hashes, args.kmer_length);
-         btllib::KmerBloomFilter excludes(hit_size, args.num_hashes, args.kmer_length);)
+         btllib::KmerBloomFilter excludes(ex_size, args.num_hashes, args.kmer_length);)
     PROCESS(
       nthits::find_hits(
         record.seq, args.kmer_length, args.min_count, args.max_count, bf, cbf, hits, excludes);)
@@ -171,14 +172,15 @@ main(int argc, char** argv)
     PRINT_BF_STATS("Intermediate CBF", cbf, 1)
     PRINT_BF_STATS("Hit k-mers BF", hits, 0)
     PRINT_BF_STATS("Excluded k-mers BF", excludes, 0)
-    SAVE(hits.save(args.out_file); excludes.save(args.out_file);)
+    SAVE(hits.save(args.out_file); excludes.save(args.out_file + ".ex");)
   }
 
   if (out_bf && min_max && using_seeds) {
+    size_t ex_size = nthits::get_bf_size(ex_count, args.num_hashes, args.seeds.size(), args.fpr);
     INIT(btllib::BloomFilter bf(bf_size, args.num_hashes);
          btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
          btllib::BloomFilter hits(hit_size, args.num_hashes);
-         btllib::BloomFilter excludes(hit_size, args.num_hashes);)
+         btllib::BloomFilter excludes(ex_size, args.num_hashes);)
     PROCESS({
       for (const auto& seed : args.seeds) {
         nthits::find_hits(
@@ -189,7 +191,7 @@ main(int argc, char** argv)
     PRINT_BF_STATS("Intermediate CBF", cbf, 1)
     PRINT_BF_STATS("Hit seeds BF", hits, 0)
     PRINT_BF_STATS("Excluded seeds BF", excludes, 0)
-    SAVE(hits.save(args.out_file); excludes.save(args.out_file);)
+    SAVE(hits.save(args.out_file); excludes.save(args.out_file + ".ex");)
   }
 
   if (out_cbf && no_thresh && !using_seeds) {

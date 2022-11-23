@@ -61,6 +61,7 @@ void
 get_thresholds(std::vector<uint64_t> histogram,
                bool solid,
                size_t& hit_count,
+               size_t& ex_count,
                unsigned& min_count,
                unsigned max_count)
 {
@@ -91,11 +92,19 @@ get_thresholds(std::vector<uint64_t> histogram,
     min_count = 1.75 * max_cov;
   }
 
-  hit_count = histogram[1];
-  for (unsigned i = 2; i <= min_count + 1; i++)
-    hit_count -= histogram[i];
-  for (unsigned i = max_count + 1; i < histogram.size(); i++)
-    hit_count -= histogram[i];
+  if (max_count < histogram.size()) {
+    hit_count = 0;
+    for (unsigned i = min_count; i <= max_count; i++)
+      hit_count += histogram[i];
+  } else {
+    hit_count = histogram[1];
+    for (unsigned i = 2; i <= min_count + 1; i++)
+      hit_count -= histogram[i];
+  }
+
+  ex_count = histogram[1];
+  for (unsigned i = 2; i <= std::min(max_count, (unsigned)histogram.size() - 1); i++)
+    ex_count -= histogram[i];
 }
 
 size_t
