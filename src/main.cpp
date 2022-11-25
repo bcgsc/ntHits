@@ -101,7 +101,8 @@ main(int argc, char** argv)
     hit_size = hit_count * 3;
   }
   if (args.verbosity > 0) {
-    print_updated_params(hit_count,
+    print_updated_params(hist[0],
+                         hit_count,
                          hist[1],
                          bf_size,
                          args.min_count,

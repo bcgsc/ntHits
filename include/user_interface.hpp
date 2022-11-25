@@ -89,7 +89,8 @@ print_logo()
 }
 
 void
-print_updated_params(size_t hit_count,
+print_updated_params(uint64_t kmer_count,
+                     size_t hit_count,
                      uint64_t num_distinct,
                      size_t bf_size,
                      unsigned hit_cap,
@@ -99,6 +100,7 @@ print_updated_params(size_t hit_count,
                      size_t hit_size,
                      unsigned verbosity)
 {
+  std::cout << "- Total number of k-mers                  : " << comma_sep(kmer_count) << std::endl;
   std::cout << "- Number of distinct k-mers               : " << comma_sep(num_distinct)
             << std::endl;
   std::cout << "- Number of filtered k-mers               : " << comma_sep(hit_count) << std::endl;
