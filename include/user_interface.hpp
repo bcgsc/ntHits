@@ -38,12 +38,13 @@ color(const std::string& text, Color color)
 inline std::string
 comma_sep(uint64_t val)
 {
-  std::string str;
-  while (val > 0) {
-    str = std::to_string(val % 1000) + "," + str;
-    val /= 1000;
+  std::string val_str = std::to_string(val);
+  unsigned i = val_str.size() % 3;
+  std::string result = i > 0 ? val_str.substr(0, i) + "," : "";
+  for (; i + 3 <= val_str.size(); i += 3) {
+    result += val_str.substr(i, 3) + ",";
   }
-  return str.substr(0, str.size() - 1);
+  return result.substr(0, result.size() - 1);
 }
 
 class Timer
