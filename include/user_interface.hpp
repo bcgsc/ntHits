@@ -57,11 +57,12 @@ private:
 public:
   void start(std::string message)
   {
-    std::cout << message << "      " << std::flush;
+    std::cout << message << " " << std::flush;
     t = new std::thread([&]() {
       std::vector<std::string> frames = { "●∙∙∙∙", "∙●∙∙∙", "∙∙●∙∙", "∙∙∙●∙", "∙∙∙∙●" };
       is_running = true;
       int i = 0;
+      std::cerr << "     " << std::flush;
       while (is_running) {
         std::cerr << "\b\b\b\b\b" << frames[i] << std::flush;
         i = (i + 1) % frames.size();
