@@ -98,6 +98,7 @@ print_updated_params(uint64_t kmer_count,
                      size_t cbf_size,
                      bool out_bloom,
                      size_t hit_size,
+                     size_t ex_size,
                      unsigned verbosity)
 {
   std::cout << "- Total number of k-mers                  : " << comma_sep(kmer_count) << std::endl;
@@ -118,6 +119,10 @@ print_updated_params(uint64_t kmer_count,
   if (out_bloom) {
     std::cout << "- Output Bloom filter size                : " << stringifyFileSize(hit_size)
               << std::endl;
+    if (ex_size > 0) {
+      std::cout << "- Excluded k-mers Bloom filter size       : " << stringifyFileSize(ex_size)
+                << std::endl;
+    }
   }
   std::cout << std::endl;
 }

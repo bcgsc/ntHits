@@ -95,7 +95,7 @@ get_thresholds(std::vector<uint64_t> histogram,
 
   if (max_count < histogram.size() && !is_bf) {
     hit_count = 0;
-    for (unsigned i = min_count; i <= max_count; i++)
+    for (unsigned i = min_count + 1; i <= max_count; i++)
       hit_count += histogram[i];
   } else {
     hit_count = histogram[1];

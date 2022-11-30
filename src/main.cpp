@@ -38,7 +38,7 @@
   timer.stop();
 
 #define PRINT_BF_STATS(NAME, BF, MIN_VERBOSITY)                                                    \
-  if (args.verbosity > MIN_VERBOSITY) {                                                            \
+  if (args.verbosity > MIN_VERBOSITY && BF.get_bytes() > 1) {                                      \
     std::cout << std::endl << NAME << " stats:" << std::endl;                                      \
     print_bloom_filter_stats(BF.get_fpr(), args.fpr, BF.get_occupancy());                          \
     std::cout << std::endl;                                                                        \
@@ -79,7 +79,7 @@ main(int argc, char** argv)
                          args.max_count);
   bool hit_cap_changed = given_hit_cap != args.min_count;
 
-  size_t bf_size, cbf_size, hit_size;
+  size_t bf_size, cbf_size, hit_size, ex_size;
   if (args.min_count > 1) {
     bf_size = nthits::get_bf_size(hist[1], args.num_hashes, args.seeds.size(), sqrt(args.fpr)) / 8;
   } else {
@@ -100,6 +100,11 @@ main(int argc, char** argv)
   } else {
     hit_size = hit_count * 3;
   }
+  if (args.out_type == OutputType::BLOOM_FILTER && args.has_max_count) {
+    ex_size = nthits::get_bf_size(ex_count, args.num_hashes, args.seeds.size(), args.fpr) / 8;
+  } else {
+    ex_size = 0;
+  }
   if (args.verbosity > 0) {
     print_updated_params(hist[0],
                          hit_count,
@@ -110,6 +115,7 @@ main(int argc, char** argv)
                          cbf_size,
                          args.out_is_filter(),
                          hit_size,
+                         ex_size,
                          args.verbosity);
   }
 
@@ -167,7 +173,6 @@ main(int argc, char** argv)
   }
 
   if (out_bf && min_max && !using_seeds) {
-    size_t ex_size = nthits::get_bf_size(ex_count, args.num_hashes, args.seeds.size(), args.fpr);
     INIT(btllib::BloomFilter bf(bf_size, args.num_hashes);
          btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
          btllib::KmerBloomFilter hits(hit_size, args.num_hashes, args.kmer_length);
@@ -183,7 +188,6 @@ main(int argc, char** argv)
   }
 
   if (out_bf && min_max && using_seeds) {
-    size_t ex_size = nthits::get_bf_size(ex_count, args.num_hashes, args.seeds.size(), args.fpr);
     INIT(btllib::BloomFilter bf(bf_size, args.num_hashes);
          btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
          btllib::BloomFilter hits(hit_size, args.num_hashes);
