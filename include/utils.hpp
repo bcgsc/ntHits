@@ -60,7 +60,6 @@ load_ntcard_histogram(const std::string& path)
 void
 get_thresholds(std::vector<uint64_t> histogram,
                bool solid,
-               bool is_bf,
                size_t& hit_count,
                size_t& ex_count,
                unsigned& min_count,
@@ -93,15 +92,9 @@ get_thresholds(std::vector<uint64_t> histogram,
     min_count = 1.75 * max_cov;
   }
 
-  if (max_count < histogram.size() && !is_bf) {
-    hit_count = 0;
-    for (unsigned i = min_count + 1; i <= max_count; i++)
-      hit_count += histogram[i];
-  } else {
-    hit_count = histogram[1];
-    for (unsigned i = 2; i <= min_count + 1; i++)
-      hit_count -= histogram[i];
-  }
+  hit_count = histogram[1];
+  for (unsigned i = 2; i <= min_count + 1; i++)
+    hit_count -= histogram[i];
 
   ex_count = histogram[1];
   for (unsigned i = 2; i <= std::min(max_count, (unsigned)histogram.size() - 1); i++)

@@ -72,7 +72,6 @@ main(int argc, char** argv)
   unsigned given_hit_cap = args.min_count;
   nthits::get_thresholds(hist,
                          args.solid,
-                         args.out_type == OutputType::BLOOM_FILTER,
                          hit_count,
                          ex_count,
                          args.min_count,
