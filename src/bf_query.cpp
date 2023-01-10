@@ -6,18 +6,17 @@
 #include <argparse/argparse.hpp>
 #include <btllib/bloom_filter.hpp>
 #include <btllib/counting_bloom_filter.hpp>
+#include <btllib/seq_reader.hpp>
 #include <iostream>
+#include <omp.h>
 #include <vector>
 
 #include "nthits.hpp"
-#include "user_interface.hpp"
 
 struct ProgramArguments
 {
-  std::string bf_path;
+  std::string bf_path, ex_path, data_path;
   bool is_cbf;
-  bool silent;
-  std::vector<std::string> seeds;
 };
 
 ProgramArguments
@@ -29,20 +28,17 @@ parse_args(int argc, char** argv)
   parser.add_description(PROGRAM_DESCRIPTION);
   parser.add_epilog(PROGRAM_COPYRIGHT);
 
-  parser.add_argument("bf_path").help("Input Bloom filter file").required();
-
   parser.add_argument("--cbf")
     .help("Treat input file as a counting Bloom filter and output k-mer counts")
     .default_value(false)
     .implicit_value(true);
 
-  parser.add_argument("-s", "--seeds")
-    .help("Spaced seed patterns separated with commas (e.g. 10101,11011)");
+  parser.add_argument("-ex").help("Path to the Bloom filter containing excluded k-mers");
 
-  parser.add_argument("--silent")
-    .help("Don't print logs to stdout")
-    .default_value(false)
-    .implicit_value(true);
+  parser.add_argument("bf_path").help("Input Bloom filter file").required();
+  parser.add_argument("data_path")
+    .help("Path to input dataset, use '-' to read from stdin.")
+    .required();
 
   try {
     parser.parse_args(argc, argv);
@@ -53,30 +49,25 @@ parse_args(int argc, char** argv)
   }
 
   args.bf_path = parser.get("bf_path");
+  args.data_path = parser.get("data_path");
   args.is_cbf = parser.get<bool>("--cbf");
-  args.silent = parser.get<bool>("--silent");
-
-  if (parser.is_used("-s")) {
-    std::istringstream ss(parser.get("-s"));
-    std::string seed;
-    while (std::getline(ss, seed, ',')) {
-      args.seeds.push_back(seed);
-    }
+  if (parser.is_used("-ex")) {
+    args.ex_path = parser.get("-ex");
   }
 
   return args;
 }
 
-#define GET_HASHES                                                                                 \
-  const uint64_t* hashes;                                                                          \
-  if (args.seeds.size() == 0) {                                                                    \
-    btllib::NtHash nthash(kmer, bf.get_hash_num(), kmer.size());                                   \
-    nthash.roll();                                                                                 \
-    hashes = nthash.hashes();                                                                      \
-  } else {                                                                                         \
-    btllib::SeedNtHash nthash(kmer, args.seeds, bf.get_hash_num(), kmer.size());                   \
-    nthash.roll();                                                                                 \
-    hashes = nthash.hashes();                                                                      \
+#define QUERY_CODE(BF, OUT)                                                                        \
+  std::cerr << "Loading Bloom filter... " << std::flush;                                           \
+  BF std::cerr << "DONE" << std::endl;                                                             \
+  btllib::SeqReader reader(args.data_path, btllib::SeqReader::Flag::SHORT_MODE);                   \
+  for (const auto& record : reader) {                                                              \
+    btllib::NtHash h(record.seq, bf.get_hash_num(), bf.get_k());                                   \
+    while (h.roll()) {                                                                             \
+      kmer = record.seq.substr(h.get_pos(), bf.get_k());                                           \
+      std::cout << kmer << "\t\t" << (OUT) << std::endl;                                           \
+    }                                                                                              \
   }
 
 int
@@ -86,50 +77,17 @@ main(int argc, char** argv)
 
   auto args = parse_args(argc, argv);
 
-  if (!args.silent) {
-    print_logo();
-  }
+  std::string kmer, seq;
 
-  Timer timer;
-  std::string kmer;
-
-  if (!args.silent && args.is_cbf) {
-    timer.start("Loading Bloom filter");
-    btllib::CountingBloomFilter<nthits::cbf_counter_t> bf(args.bf_path);
-    timer.stop();
-    print_bloom_filter_stats(bf.get_fpr(), 1.0, bf.get_occupancy());
-    std::cout << std::endl << "> " << std::flush;
-    while (std::cin >> kmer) {
-      GET_HASHES
-      std::cout << (unsigned)bf.contains(hashes) << std::endl;
-      std::cout << "> " << std::flush;
-    }
-  }
-  if (args.silent && args.is_cbf) {
-    btllib::CountingBloomFilter<nthits::cbf_counter_t> bf(args.bf_path);
-    while (std::cin >> kmer) {
-      GET_HASHES
-      std::cout << (unsigned)bf.contains(hashes) << std::endl;
-    }
-  }
-  if (!args.silent && !args.is_cbf) {
-    timer.start("Loading Bloom filter");
-    btllib::BloomFilter bf(args.bf_path);
-    timer.stop();
-    print_bloom_filter_stats(bf.get_fpr(), 1.0, bf.get_occupancy());
-    std::cout << std::endl << "> " << std::flush;
-    while (std::cin >> kmer) {
-      GET_HASHES
-      std::cout << (bf.contains(hashes) ? "TRUE" : "FALSE") << std::endl;
-      std::cout << "> " << std::flush;
-    }
-  }
-  if (args.silent && !args.is_cbf) {
-    btllib::BloomFilter bf(args.bf_path);
-    while (std::cin >> kmer) {
-      GET_HASHES
-      std::cout << (bf.contains(hashes) ? "TRUE" : "FALSE") << std::endl;
-    }
+  if (args.is_cbf) {
+    QUERY_CODE(btllib::KmerCountingBloomFilter8 bf(args.bf_path);, bf.contains(h.hashes()))
+  } else if (args.ex_path.empty()) {
+    QUERY_CODE(btllib::KmerBloomFilter bf(args.bf_path);
+               , bf.contains(h.hashes()) > 0 ? "YES" : "NO")
+  } else {
+    QUERY_CODE(btllib::KmerBloomFilter bf(args.bf_path);
+               btllib::KmerBloomFilter bf_ex(args.ex_path);
+               , bf.contains(h.hashes()) > 0 && bf_ex.contains(h.hashes()) == 0 ? "YES" : "NO")
   }
 
   return 0;
