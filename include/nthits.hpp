@@ -33,7 +33,7 @@ find_hits(const std::string& seq, const unsigned kmer_length, btllib::KmerBloomF
 }
 
 inline void
-find_hits(const std::string& seq, const std::string& seed, btllib::BloomFilter& bf)
+find_hits(const std::string& seq, const std::string& seed, btllib::SeedBloomFilter& bf)
 {
   SEQ_LEN_GUARD(seed.size())
   btllib::SeedNtHash nthash(seq, { seed }, bf.get_hash_num(), seed.size());

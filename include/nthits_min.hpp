@@ -34,7 +34,7 @@ find_hits(const std::string& seq,
           const unsigned min_count,
           btllib::BloomFilter& bf,
           btllib::CountingBloomFilter<cbf_counter_t>& cbf,
-          btllib::BloomFilter& hit_filter)
+          btllib::SeedBloomFilter& hit_filter)
 {
   SEQ_LEN_GUARD(seed.size())
   btllib::SeedNtHash nthash(seq, { seed }, bf.get_hash_num(), seed.size());

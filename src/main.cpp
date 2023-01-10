@@ -146,7 +146,7 @@ main(int argc, char** argv)
   }
 
   if (out_bf && !min && using_seeds) {
-    INIT(btllib::BloomFilter hits(hit_size, args.num_hashes);)
+    INIT(btllib::SeedBloomFilter hits(hit_size, args.seeds[0].size(), args.seeds, args.num_hashes);)
     PROCESS({
       for (const auto& seed : args.seeds) {
         nthits::find_hits(record.seq, seed, hits);
@@ -159,7 +159,7 @@ main(int argc, char** argv)
   if (out_bf && min && using_seeds) {
     INIT(btllib::BloomFilter bf(bf_size, args.num_hashes);
          btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
-         btllib::BloomFilter hits(hit_size, args.num_hashes);)
+         btllib::SeedBloomFilter hits(hit_size, args.seeds[0].size(), args.seeds, args.num_hashes);)
     PROCESS({
       for (const auto& seed : args.seeds) {
         nthits::find_hits(record.seq, seed, args.min_count, bf, cbf, hits);
@@ -189,8 +189,8 @@ main(int argc, char** argv)
   if (out_bf && min_max && using_seeds) {
     INIT(btllib::BloomFilter bf(bf_size, args.num_hashes);
          btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
-         btllib::BloomFilter hits(hit_size, args.num_hashes);
-         btllib::BloomFilter excludes(ex_size, args.num_hashes);)
+         btllib::SeedBloomFilter hits(hit_size, args.seeds[0].size(), args.seeds, args.num_hashes);
+         btllib::SeedBloomFilter excludes(hit_size, args.seeds[0].size(), args.seeds, args.num_hashes);)
     PROCESS({
       for (const auto& seed : args.seeds) {
         nthits::find_hits(
