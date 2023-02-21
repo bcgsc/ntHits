@@ -8,7 +8,6 @@
 #include <btllib/counting_bloom_filter.hpp>
 #include <btllib/seq_reader.hpp>
 #include <iostream>
-#include <omp.h>
 #include <vector>
 
 #include "nthits.hpp"
@@ -73,8 +72,6 @@ parse_args(int argc, char** argv)
 int
 main(int argc, char** argv)
 {
-  omp_set_num_threads(1);
-
   auto args = parse_args(argc, argv);
 
   std::string kmer, seq;
