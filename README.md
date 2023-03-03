@@ -6,9 +6,8 @@ ntHits is a tool for efficiently counting and filtering k-mers based on their fr
 
 - C++ compiler with c++17 and OpenMP support
 - [Meson](https://mesonbuild.com/)
-- [btllib](https://github.com/bcgsc/btllib)
-
-To install the dependencies using conda, run `conda install -c bioconda -c conda-forge --file requirements.txt`.
+- [btllib](https://github.com/bcgsc/btllib) (>=1.5.0, please install from source and update your `CPPFLAGS` and `LDFLAGS`)
+- [Catch2](https://github.com/catchorg/Catch2), only for running tests
 
 ntHits uses [argparse](https://github.com/p-ranav/argparse) for command-line argument parsing which is built-in as a submodule (no further installation required).
 
