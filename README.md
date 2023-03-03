@@ -1,81 +1,117 @@
-ntHits 
-=
-ntHits is a method for identifying repeats in high-throughput DNA sequencing data. 
+# ntHits
 
-Compiling ntHits from GitHub
-===========================
+ntHits is a tool for efficiently counting and filtering k-mers based on their frequencies.
 
-When installing ntHits from GitHub source the following tools are
-required:
+# Dependencies
 
-* [Autoconf](http://www.gnu.org/software/autoconf)
-* [Automake](http://www.gnu.org/software/automake)
+- C++ compiler with c++17 and OpenMP support
+- [Meson](https://mesonbuild.com/)
+- [btllib](https://github.com/bcgsc/btllib)
 
-To generate the configure script and make files:
+To install the dependencies using conda, run `conda install -c bioconda -c conda-forge --file requirements.txt`.
 
-	./autogen.sh
- 
-Compiling ntHits from source
-===========================
-To compile and install ntHits in /usr/local:
+ntHits uses [argparse](https://github.com/p-ranav/argparse) for command-line argument parsing which is built-in as a submodule (no further installation required).
 
-```
-$ ./configure
-$ make 
-$ sudo make install 
+# Installation
+
+Download the latest release and run the following command in the project's root directory to create a buildsystem in the `build` folder:
+
+```shell
+meson setup build
 ```
 
-To install ntHits in a specified directory:
+Then, `cd` into the `build` folder and compile ntHits using:
 
-```
-$ ./configure --prefix=/opt/ntHits
-$ make 
-$ make install 
+```shell
+ninja
 ```
 
-ntHits uses OpenMP for parallelization, which requires a modern compiler such as GCC 4.2 or greater. If you have an older compiler, it is best to upgrade your compiler if possible. If you have multiple versions of GCC installed, you can specify a different compiler:
+This will generate two binary files in the `build` folder: `nthits` for generating the desired data structure containing the k-mers and if possible, their counts; and `nthits-bfq` for querying the output if it's a (counting) Bloom filter.
+
+# Usage
 
 ```
-$ ./configure CC=gcc-xx CXX=g++-xx 
+       _          _ _              
+ _ __ | |_  /\  /(_) |_ ___       
+| '_ \| __|/ /_/ / | __/ __|      
+| | | | |_/ __  /| | |_\__ \     
+|_| |_|\__\/ /_/ |_|\__|___/  
+
+Usage: nthits --frequencies VAR [--min-count VAR] [--max-count VAR] [--kmer-length VAR] [-h] [--error-rate VAR] [--seeds VAR] [--threads VAR] [--solid] [--long-mode] --out-file VAR out_type files
+
+Filters k-mers based on counts (cmin <= count <= cmax) in input files
+
+Positional arguments:
+  out_type              Output format: Bloom filter 'bf', counting Bloom filter ('cbf'), or table ('table') [required]
+  files                 Input files [nargs: 0 or more] [required]
+
+Optional arguments:
+  -f, --frequencies     Frequency histogram file (e.g. from ntCard) [required]
+  -cmin, --min-count    Minimum k-mer count (>=1), ignored if using --solid [default: 1]
+  -cmax, --max-count    Maximum k-mer count (<=254) [default: 254]
+  -k, --kmer-length     k-mer length, ignored if using spaced seeds (-s) [default: 64]
+  -h, --num-hashes      Number of hashes to generate per k-mer/spaced seed [default: 3]
+  -p, --error-rate      Target Bloom filter error rate [default: 0.0001]
+  -s, --seeds           If specified, use spaced seeds (separate with commas, e.g. 10101,11011) 
+  -t, --threads         Number of parallel threads [default: 4]
+  --solid               Automatically tune 'cmin' to filter out erroneous k-mers 
+  --long-mode           Optimize data reader for long sequences (>5kbp) 
+  -v                    Level of details printed to stdout (-v: normal, -vv detailed) 
+  -o, --out-file        Output file's name [required]
+
+Copyright 2022 Canada's Michael Smith Genome Science Centre
 ```
 
-For the best performance of ntHits, pass `-O3` flag:  
+If the output data structure is a Bloom filter (or CBF), it can be queried by either using the `nthits-bfq` tool, or using btllib's API:
 
-```
-$ ./configure CFLAGS='-g -O3' CXXFLAGS='-g -O3' 
-```
+## ntHits Bloom Filter Query Tool
 
+```none
+Usage: nthits-bfq [-h] [--cbf] [--seeds VAR] [--silent] bf_path
 
-To run ntHits, its executables should be found in your PATH. If you installed ntHits in /opt/ntHits, add /opt/ntHits/bin to your PATH:
+Query tool for ntHits' output Bloom filter
 
-```
-$ PATH=/opt/ntHits/bin:$PATH
-```
+Positional arguments:
+  bf_path       Input Bloom filter file [required]
 
-Run ntHits
-==========
-```
-nthits [OPTIONS] ... [FILE]
-```
-Parameters:
-  * `-k`,  `--kmer=SIZE`: the length of *k*-mer `[64]`
-  * `-t`,  `--threads=N`: use N parallel threads `[16]`
-  * `-c`,  `--cutoff=N`: the maximum coverage of *k*-mer in output 
-  * `-p`,  `--pref=STRING`: the prefix for output file name `[repeat]`
-  * `--outbloom`, output the most frequet k-mers in a Bloom filter
-  * `--solid`,  output the solid k-mers (non-errornous k-mers)
-  * `FILE`: input file or set of files seperated by space, in fasta, fastq, sam, and bam formats. The files can also be in compressed (`.gz`, `.bz2`, `.xz`) formats . A list of files containing file names in each row can be passed with `@` prefix.
-  
-For example to run nthits on a test file `reads.fastq` with `k=50`:
-```
-$ nthits -k50 reads.fastq 
-```
-As another example, to run nthits on `5` input files file_1.fq.gz, file_2.fa, file_3.sam, file_4.bam, file_5.fq with `k=64` and 32 threads and repeat regions with frequency `>100``:
-```
-$ nthits -k64 -c100 -j64 file_1.fq.gz file_2.fa file_3.sam file_4.bam file_5.fq
+Optional arguments:
+  -h, --help    shows help message and exits 
+  -v, --version prints version information and exits 
+  --cbf         Treat input file as a counting Bloom filter and output k-mer counts 
+  -s, --seeds   Spaced seed patterns separated with commas (e.g. 10101,11011) 
+  --silent      Don't print logs to stdout 
+
+Copyright 2022 Canada's Michael Smith Genome Science Centre
 ```
 
-If we have a list of input files `lib.in` with input file names in each row and want to run ntHits with `k=144` and 12 threads:
+## btllib's Bloom Filter API
+
+C++ example:
+
+```c++
+#include <btllib/bloom_filter.hpp>
+#include <btllib/counting_bloom_filter.hpp>
+#include <string>
+
+int main() {
+  btllib::KmerBloomFilter bf(path_to_bloom_filter);
+  // or btllib::KmerCountingBloomFilter8 
+  std::string kmer = "AGCTATCAGTCGA";
+  std::cout << bf.contains(kmer) << std::endl;
+  return 0;
+}
+
 ```
-$ nthits -k144 -j12 @lib.in 
+
+Python example:
+
+```python
+import btllib
+
+bf = btllib.KmerBloomFilter(path_to_bloom_filter)
+# or btllib.KmerCountingBloomFilter8
+kmer = "AGCTATCAGTCGA"
+print(bf.contains(kmer))
 ```
+
+If using spaced seeds, btllib's `BloomFilter` and `CountingBloomFilter` classes should be used instead. In this case, refer to btllib's docs and examples to query the Bloom filters using hashes generated from a `SeedNtHash` object.

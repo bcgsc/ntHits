@@ -1,0 +1,7 @@
+c-compiler
+cxx-compiler
+meson
+cmake
+btllib
+openmp
+catch2
