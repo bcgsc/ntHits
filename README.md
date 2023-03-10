@@ -1,5 +1,7 @@
 # ntHits
 
+![Logo](https://github.com/bcgsc/nthits/blob/master/nthits-logo.png)
+
 ntHits is a tool for efficiently counting and filtering k-mers based on their frequencies.
 
 # Dependencies
