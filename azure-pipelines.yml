@@ -11,12 +11,12 @@ jobs:
   - script: echo "##vso[task.prependpath]$CONDA/bin"
     displayName: Add conda to PATH
   
-  - script: conda create --yes --quiet --name nthits
+  - script: conda create --yes --quiet --name nthits -c conda-forge mamba
     displayName: Create Anaconda environment
 
   - script: |
       source activate nthits
-      conda install --yes -c conda-forge -c bioconda --file requirements.txt
+      mamba install --yes -c conda-forge -c bioconda --file requirements.txt
     displayName: Install dependencies
 
   - script: |
@@ -38,14 +38,12 @@ jobs:
   - script: echo "##vso[task.prependpath]$CONDA/bin"
     displayName: Add conda to PATH
   
-  - script: conda create --yes --quiet --name nthits
+  - script: conda create --yes --quiet --name nthits -c conda-forge mamba python=3.10
     displayName: Create Anaconda environment
 
   - script: |
       source activate nthits
-      conda install --yes -c conda-forge python=3.10
-      conda install --yes -c conda-forge compilers llvm-openmp meson cmake catch2
-      conda install --yes -c bioconda btllib
+      mamba install --yes -c conda-forge -c bioconda --file requirements.txt
     displayName: Install dependencies
 
   - script: |
