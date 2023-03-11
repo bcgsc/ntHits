@@ -1,0 +1,12 @@
+#ifndef NTHITS_VERSION_HPP
+#define NTHITS_VERSION_HPP
+
+#include <string>
+
+namespace nthits {
+
+const std::string VERSION = "@PROJECT_VERSION@";
+
+}
+
+#endif

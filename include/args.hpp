@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "nthits.hpp"
+#include "version.hpp"
 
 enum OutputType
 {

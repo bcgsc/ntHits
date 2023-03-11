@@ -20,8 +20,6 @@
 
 namespace nthits {
 
-const std::string VERSION = "@PROJECT_VERSION@";
-
 using cbf_counter_t = uint8_t;
 
 inline void

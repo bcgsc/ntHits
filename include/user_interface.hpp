@@ -8,6 +8,7 @@
 #include "human_readable_strings.hpp"
 #include "logo.hpp"
 #include "nthits.hpp"
+#include "version.hpp"
 
 enum Color
 {

@@ -7,8 +7,8 @@ project(
 )
 
 configure_file(
-  input : 'include/nthits.hpp',
-  output : 'nthits.hpp',
+  input : 'include/version.in',
+  output : 'version.hpp',
   configuration : {
     'PROJECT_VERSION' : meson.project_version()
   }
