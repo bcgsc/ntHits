@@ -1,7 +1,5 @@
-c-compiler
-cxx-compiler
+compilers
 meson
 cmake
-btllib
-openmp
+btllib>=1.5.0
 catch2
