@@ -11,7 +11,7 @@
 TEST_CASE("BF, cmin=2", "[nthits]")
 {
   auto data = load_test_data();
-  Validator v(data, 2);
+  Validator v(2);
   btllib::BloomFilter bf(BF_SIZE, NUM_HASHES);
   btllib::CountingBloomFilter8 cbf(BF_SIZE, NUM_HASHES);
   btllib::KmerBloomFilter hits(BF_SIZE, NUM_HASHES, v.get_kmer_length());
