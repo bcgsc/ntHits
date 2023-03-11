@@ -43,7 +43,8 @@ jobs:
 
   - script: |
       source activate nthits
-      conda install --yes -c conda-forge -c bioconda --file requirements.txt
+      conda install --yes -c conda-forge c-compiler cxx-compiler openmp meson cmake catch2
+      conda install --yes -c bioconda btllib
     displayName: Install dependencies
 
   - script: |
