@@ -33,7 +33,6 @@ class Validator
 {
 
 private:
-  std::vector<std::string>& data;
   std::unordered_map<std::string, unsigned> true_counts;
   unsigned min_count, max_count;
 
@@ -48,9 +47,8 @@ private:
   }
 
 public:
-  Validator(std::vector<std::string>& data, unsigned min_count = 0, unsigned max_count = 0)
-    : data(data)
-    , min_count(min_count)
+  Validator(unsigned min_count = 0, unsigned max_count = 0)
+    : min_count(min_count)
     , max_count(max_count)
   {
     load_counts();
@@ -83,7 +81,6 @@ public:
     }
     return true;
   }
-
 };
 
 #endif
