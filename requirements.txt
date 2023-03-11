@@ -1,7 +1,6 @@
-c-compiler
-cxx-compiler
+compilers
 meson
 cmake
-btllib
-openmp
+python=3.10
+btllib>=1.5.0
 catch2
