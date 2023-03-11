@@ -32,11 +32,16 @@ This will generate two binary files in the `build` folder: `nthits` for generati
 # Usage
 
 ```
-       _          _ _              
- _ __ | |_  /\  /(_) |_ ___       
-| '_ \| __|/ /_/ / | __/ __|      
-| | | | |_/ __  /| | |_\__ \     
-|_| |_|\__\/ /_/ |_|\__|___/  
+████████╣╣╢█████████████████████
+████████╣╣╢█▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+█╣╣╣████╣╣╢█                    
+█╝╝╝████╣╣╢█████  ▐██╬╬╬╠╬╠╠╠╣╣║
+█          █╣╣╣█  ▐╠╠╠╠╬╟╫██████
+█   ████   █╣╣╣█  ▐╠╠╠╠╠╠╬╣╣╠╬╬█
+█   ████   █╣╣╣█  ▐█████╠╣╠╠╠╬╣╢
+█   ████   █╠╠╟█  ▐╠╬╬║╠╠╠╠╣╣╠██
+████████████████  ▐█████████████
+████████████████  ▐█████████████ 
 
 Usage: nthits --frequencies VAR [--min-count VAR] [--max-count VAR] [--kmer-length VAR] [-h] [--error-rate VAR] [--seeds VAR] [--threads VAR] [--solid] [--long-mode] --out-file VAR out_type files
 
@@ -115,4 +120,4 @@ kmer = "AGCTATCAGTCGA"
 print(bf.contains(kmer))
 ```
 
-If using spaced seeds, btllib's `BloomFilter` and `CountingBloomFilter` classes should be used instead. In this case, refer to btllib's docs and examples to query the Bloom filters using hashes generated from a `SeedNtHash` object.
+If using spaced seeds, btllib's `BloomFilter` and `CountingBloomFilter` classes should be used instead. In this case, refer to [btllib's docs](https://bcgsc.github.io/btllib/) and examples to query the Bloom filters using hashes generated from a `SeedNtHash` object.

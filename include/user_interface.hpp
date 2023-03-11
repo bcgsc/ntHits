@@ -6,14 +6,8 @@
 #include <thread>
 
 #include "human_readable_strings.hpp"
+#include "logo.hpp"
 #include "nthits.hpp"
-
-#define LOGO                                                                                       \
-  "       _          _ _              \n"                                                          \
-  " _ __ | |_  /\\  /(_) |_ ___       \n"                                                          \
-  "| '_ \\| __|/ /_/ / | __/ __|      \n"                                                          \
-  "| | | | |_/ __  /| | |_\\__ \\     \n"                                                          \
-  "|_| |_|\\__\\/ /_/ |_|\\__|___/    "
 
 enum Color
 {
@@ -86,7 +80,7 @@ public:
 void
 print_logo()
 {
-  std::cout << LOGO << "\tv" << nthits::VERSION << std::endl << std::endl;
+  std::cerr << LOGO << "\tv" << nthits::VERSION << std::endl << std::endl;
 }
 
 void
