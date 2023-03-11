@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "nthits.hpp"
+#include "version.hpp"
 
 struct ProgramArguments
 {
