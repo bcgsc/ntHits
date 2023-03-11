@@ -32,17 +32,6 @@ This will generate two binary files in the `build` folder: `nthits` for generati
 # Usage
 
 ```
-████████╣╣╢█████████████████████
-████████╣╣╢█▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
-█╣╣╣████╣╣╢█                    
-█╝╝╝████╣╣╢█████  ▐██╬╬╬╠╬╠╠╠╣╣║
-█          █╣╣╣█  ▐╠╠╠╠╬╟╫██████
-█   ████   █╣╣╣█  ▐╠╠╠╠╠╠╬╣╣╠╬╬█
-█   ████   █╣╣╣█  ▐█████╠╣╠╠╠╬╣╢
-█   ████   █╠╠╟█  ▐╠╬╬║╠╠╠╠╣╣╠██
-████████████████  ▐█████████████
-████████████████  ▐█████████████ 
-
 Usage: nthits --frequencies VAR [--min-count VAR] [--max-count VAR] [--kmer-length VAR] [-h] [--error-rate VAR] [--seeds VAR] [--threads VAR] [--solid] [--long-mode] --out-file VAR out_type files
 
 Filters k-mers based on counts (cmin <= count <= cmax) in input files
