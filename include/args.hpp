@@ -4,7 +4,7 @@
 #define PROGRAM_NAME "ntHits"
 #define PROGRAM_VERSION nthits::VERSION
 #define PROGRAM_DESCRIPTION "Filters k-mers based on counts (cmin <= count <= cmax) in input files"
-#define PROGRAM_COPYRIGHT "Copyright 2022 Canada's Michael Smith Genome Science Centre"
+#define PROGRAM_COPYRIGHT "Copyright 2023 Canada's Michael Smith Genome Science Centre"
 
 #include <argparse/argparse.hpp>
 #include <limits>
@@ -22,14 +22,17 @@ enum OutputType
 
 struct ProgramArguments
 {
+private:
+  bool used_max_count = false;
+
+public:
   unsigned num_threads;
   unsigned kmer_length;
   unsigned num_hashes;
   double fpr;
-  bool has_min_count = false, has_max_count = false;
   unsigned min_count = 0, max_count = std::numeric_limits<nthits::cbf_counter_t>::max() - 1;
   std::string out_file;
-  unsigned verbosity;
+  unsigned verbosity = 0;
   OutputType out_type;
   bool solid;
   bool long_mode;
@@ -40,6 +43,9 @@ struct ProgramArguments
   ProgramArguments(int argc, char** argv);
 
   void print();
+
+  bool has_min_count() { return min_count > 1; }
+  bool has_max_count() { return used_max_count; }
 
   bool out_is_filter()
   {
@@ -129,17 +135,10 @@ ProgramArguments::ProgramArguments(int argc, char** argv)
 
   if (parser.is_used("-cmin")) {
     min_count = parser.get<unsigned>("-cmin");
-    has_min_count = min_count > 1;
   }
   if (parser.is_used("-cmax")) {
-    has_max_count = true;
+    used_max_count = true;
     max_count = parser.get<unsigned>("-cmax");
-  }
-
-  if (min_count < 1 || max_count > std::numeric_limits<nthits::cbf_counter_t>::max() - 1) {
-    std::cerr << "Invalid k-mer count range (-cmin and -cmax)" << std::endl;
-    std::cerr << parser;
-    std::exit(1);
   }
 
   std::string out_type_str = parser.get("out_type");
@@ -207,10 +206,10 @@ ProgramArguments::print()
     std::cout << "[-p] Bloom filter FPR       : " << fpr << std::endl;
   }
   std::cout << "[-t] Number of threads      : " << num_threads << std::endl;
-  if (has_min_count) {
+  if (has_min_count()) {
     std::cout << "[-cmin] Min. k-mer count    : " << min_count << std::endl;
   }
-  if (has_max_count) {
+  if (has_max_count()) {
     std::cout << "[-cmax] Max. k-mer count    : " << max_count << std::endl;
   }
   const char* out_types[] = { "HIT TABLE", "BLOOM FILTER", "COUNTING BLOOM FILTER" };

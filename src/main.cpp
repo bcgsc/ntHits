@@ -57,9 +57,11 @@ get_flag(bool long_mode)
 int
 main(int argc, char** argv)
 {
-  print_logo();
-
   auto args = ProgramArguments(argc, argv);
+
+  if (args.verbosity > 0) {
+    print_logo();
+  }
 
   if (args.verbosity > 1) {
     args.print();
@@ -84,7 +86,7 @@ main(int argc, char** argv)
   } else {
     bf_size = 1;
   }
-  if (args.min_count > 2 || args.has_max_count) {
+  if (args.min_count > 2 || args.has_max_count()) {
     cbf_size =
       nthits::get_bf_size(hist[1] - hist[2], args.num_hashes, args.seeds.size(), sqrt(args.fpr));
   } else {
@@ -99,7 +101,7 @@ main(int argc, char** argv)
   } else {
     hit_size = hit_count * 3;
   }
-  if (args.out_type == OutputType::BLOOM_FILTER && args.has_max_count) {
+  if (args.out_type == OutputType::BLOOM_FILTER && args.has_max_count()) {
     ex_size = nthits::get_bf_size(ex_count, args.num_hashes, args.seeds.size(), args.fpr) / 8;
   } else {
     ex_size = 0;
@@ -122,9 +124,9 @@ main(int argc, char** argv)
   bool out_bf = args.out_type == OutputType::BLOOM_FILTER;
   bool out_cbf = args.out_type == OutputType::COUNTING_BLOOM_FILTER;
   bool out_table = args.out_type == OutputType::HIT_TABLE;
-  bool min = args.has_min_count && !args.has_max_count;
-  bool min_max = args.has_max_count;
-  bool no_thresh = !args.has_min_count && !args.has_max_count;
+  bool min = args.has_min_count() && !args.has_max_count();
+  bool min_max = args.has_max_count();
+  bool no_thresh = !args.has_min_count() && !args.has_max_count();
   bool using_seeds = args.using_seeds();
 
   if (out_bf && no_thresh && !using_seeds) {
