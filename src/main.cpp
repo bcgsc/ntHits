@@ -72,12 +72,7 @@ main(int argc, char** argv)
   auto hist = nthits::load_ntcard_histogram(args.histogram_path);
   size_t hit_count, ex_count;
   unsigned given_hit_cap = args.min_count;
-  nthits::get_thresholds(hist,
-                         args.solid,
-                         hit_count,
-                         ex_count,
-                         args.min_count,
-                         args.max_count);
+  nthits::get_thresholds(hist, args.solid, hit_count, ex_count, args.min_count, args.max_count);
   bool hit_cap_changed = given_hit_cap != args.min_count;
 
   size_t bf_size, cbf_size, hit_size, ex_size;
@@ -86,7 +81,9 @@ main(int argc, char** argv)
   } else {
     bf_size = 1;
   }
-  if (args.min_count > 2 || args.has_max_count()) {
+  if (args.min_count == 1 && args.has_max_count()) {
+    cbf_size = nthits::get_bf_size(hist[1], args.num_hashes, args.seeds.size(), sqrt(args.fpr));
+  } else if (args.min_count > 2 || args.has_max_count()) {
     cbf_size =
       nthits::get_bf_size(hist[1] - hist[2], args.num_hashes, args.seeds.size(), sqrt(args.fpr));
   } else {
@@ -192,7 +189,8 @@ main(int argc, char** argv)
     INIT(btllib::BloomFilter bf(bf_size, args.num_hashes);
          btllib::CountingBloomFilter<nthits::cbf_counter_t> cbf(cbf_size, args.num_hashes);
          btllib::SeedBloomFilter hits(hit_size, args.seeds[0].size(), args.seeds, args.num_hashes);
-         btllib::SeedBloomFilter excludes(hit_size, args.seeds[0].size(), args.seeds, args.num_hashes);)
+         btllib::SeedBloomFilter excludes(
+           hit_size, args.seeds[0].size(), args.seeds, args.num_hashes);)
     PROCESS({
       for (const auto& seed : args.seeds) {
         nthits::find_hits(
