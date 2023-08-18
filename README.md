@@ -15,6 +15,12 @@ ntHits uses [argparse](https://github.com/p-ranav/argparse) for command-line arg
 
 # Installation
 
+**NOTE:** If you are installing btllib from its source, run its `./compile` script and add the following environment variables:
+```
+export CPPFLAGS="-isystem /path/to/btllib/install/include $CPPFLAGS"
+export LDFLAGS="-L/path/to/btllib/install/lib -lbtllib $LDFLAGS"
+```
+
 Download the latest release and run the following command in the project's root directory to create a buildsystem in the `build` folder:
 
 ```shell
