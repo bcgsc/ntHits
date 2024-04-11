@@ -3,18 +3,22 @@
 
 #include "nthits.hpp"
 
-#define PROCESS_MIN_MAX(HIT_INSERT, HIT_REMOVE)                                                    \
+#define PROCESS_MIN_MAX(HIT_INIT, HIT_INSERT, HIT_REMOVE)                                          \
   while (nthash.roll()) {                                                                          \
-    if (min_count == 1 || bf.contains_insert(nthash.hashes())) {                                   \
-      auto count = cbf.insert_thresh_contains(nthash.hashes(), max_count + 2);                     \
-      if (min_count > 1) {                                                                         \
-        ++count;                                                                                   \
-      }                                                                                            \
-      if (count == max_count + 1) {                                                                \
-        HIT_REMOVE                                                                                 \
-      } else if (count >= min_count && count <= max_count) {                                       \
-        HIT_INSERT                                                                                 \
-      }                                                                                            \
+    if (!bf.contains_insert(nthash.hashes())) {                                                    \
+      continue;                                                                                    \
+    }                                                                                              \
+    if (min_count <= 2) {                                                                          \
+      HIT_INSERT                                                                                   \
+      continue;                                                                                    \
+    }                                                                                              \
+    const unsigned count = cbf.insert_contains(nthash.hashes()) + 1;                               \
+    if (count == min_count) {                                                                      \
+      HIT_INIT                                                                                     \
+    } else if (count > min_count && count < max_count) {                                           \
+      HIT_INSERT                                                                                   \
+    } else if (count >= max_count) {                                                               \
+      HIT_REMOVE                                                                                   \
     }                                                                                              \
   }
 
@@ -32,7 +36,8 @@ find_hits(const std::string& seq,
 {
   SEQ_LEN_GUARD(kmer_length)
   btllib::NtHash nthash(seq, bf.get_hash_num(), kmer_length);
-  PROCESS_MIN_MAX(hits.insert(nthash.hashes());, excludes.insert(nthash.hashes());)
+  PROCESS_MIN_MAX(hits.insert(nthash.hashes());, hits.insert(nthash.hashes());
+                  , excludes.insert(nthash.hashes());)
 }
 
 inline void
@@ -47,7 +52,8 @@ find_hits(const std::string& seq,
 {
   SEQ_LEN_GUARD(seed.size())
   btllib::SeedNtHash nthash(seq, { seed }, bf.get_hash_num(), seed.size());
-  PROCESS_MIN_MAX(hits.insert(nthash.hashes());, excludes.insert(nthash.hashes());)
+  PROCESS_MIN_MAX(hits.insert(nthash.hashes());, hits.insert(nthash.hashes());
+                  , excludes.insert(nthash.hashes());)
 }
 
 inline void
@@ -61,7 +67,9 @@ find_hits(const std::string& seq,
 {
   SEQ_LEN_GUARD(kmer_length)
   btllib::NtHash nthash(seq, bf.get_hash_num(), kmer_length);
-  PROCESS_MIN_MAX(hit_filter.insert(nthash.hashes());, hit_filter.clear(nthash.hashes());)
+  PROCESS_MIN_MAX(hit_filter.insert(nthash.hashes(), min_count);
+                  , hit_filter.insert(nthash.hashes());
+                  , hit_filter.clear(nthash.hashes());)
 }
 
 inline void
@@ -75,7 +83,9 @@ find_hits(const std::string& seq,
 {
   SEQ_LEN_GUARD(seed.size())
   btllib::SeedNtHash nthash(seq, { seed }, bf.get_hash_num(), seed.size());
-  PROCESS_MIN_MAX(hit_filter.insert(nthash.hashes());, hit_filter.clear(nthash.hashes());)
+  PROCESS_MIN_MAX(hit_filter.insert(nthash.hashes(), min_count);
+                  , hit_filter.insert(nthash.hashes());
+                  , hit_filter.clear(nthash.hashes());)
 }
 
 inline void
@@ -90,6 +100,10 @@ find_hits(const std::string& seq,
   SEQ_LEN_GUARD(kmer_length)
   btllib::NtHash nthash(seq, bf.get_hash_num(), kmer_length);
   PROCESS_MIN_MAX(
+    {
+      std::string kmer = seq.substr(nthash.get_pos(), nthash.get_k());
+      hit_table.insert(nthash.hashes()[0], kmer, min_count);
+    },
     {
       std::string kmer = seq.substr(nthash.get_pos(), nthash.get_k());
       hit_table.insert(nthash.hashes()[0], kmer);

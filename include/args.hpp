@@ -31,7 +31,7 @@ public:
   unsigned kmer_length;
   unsigned num_hashes;
   double fpr;
-  unsigned min_count = 0, max_count = std::numeric_limits<nthits::cbf_counter_t>::max() - 1;
+  unsigned min_count, max_count = std::numeric_limits<nthits::cbf_counter_t>::max() - 1;
   std::string out_file;
   unsigned verbosity = 0;
   OutputType out_type;
@@ -134,9 +134,7 @@ ProgramArguments::ProgramArguments(int argc, char** argv)
     std::exit(1);
   }
 
-  if (parser.is_used("-cmin")) {
-    min_count = parser.get<unsigned>("-cmin");
-  }
+  min_count = parser.get<unsigned>("-cmin");
   if (parser.is_used("-cmax")) {
     used_max_count = true;
     max_count = parser.get<unsigned>("-cmax");
@@ -176,6 +174,10 @@ ProgramArguments::ProgramArguments(int argc, char** argv)
     }
   }
 
+  if (solid) {
+    min_count = 0;
+  }
+
   try {
     input_files = parser.get<std::vector<std::string>>("files");
   } catch (std::logic_error& e) {
@@ -207,7 +209,7 @@ ProgramArguments::print()
     std::cout << "[-p] Bloom filter FPR       : " << fpr << std::endl;
   }
   std::cout << "[-t] Number of threads      : " << num_threads << std::endl;
-  if (has_min_count()) {
+  if (!solid) {
     std::cout << "[-cmin] Min. k-mer count    : " << min_count << std::endl;
   }
   if (has_max_count()) {

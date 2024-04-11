@@ -46,35 +46,19 @@ class Timer
 {
 private:
   std::chrono::time_point<std::chrono::system_clock> t_start;
-  bool is_running;
-  std::thread* t;
 
 public:
   void start(std::string message)
   {
-    std::cout << message << " " << std::flush;
-    t = new std::thread([&]() {
-      std::vector<std::string> frames = { "●∙∙∙∙", "∙●∙∙∙", "∙∙●∙∙", "∙∙∙●∙", "∙∙∙∙●" };
-      is_running = true;
-      int i = 0;
-      std::cerr << "     " << std::flush;
-      while (is_running) {
-        std::cerr << "\b\b\b\b\b" << frames[i] << std::flush;
-        i = (i + 1) % frames.size();
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      }
-    });
+    std::cout << message << "... " << std::flush;
     t_start = std::chrono::system_clock::now();
   }
 
   void stop()
   {
-    is_running = false;
-    t->join();
     auto t_end = std::chrono::system_clock::now();
-    std::chrono::duration<double> elapsed = (t_end - t_start);
-    std::cout << color("\b\b\b\b\bDONE", Color::FG_GREEN) << " (" << elapsed.count() << "s)"
-              << std::endl;
+    std::chrono::duration<double> elapsed = t_end - t_start;
+    std::cout << color("DONE", Color::FG_GREEN) << " (" << elapsed.count() << "s)" << std::endl;
   }
 };
 
@@ -106,17 +90,16 @@ print_updated_params(uint64_t kmer_count,
   }
   if (verbosity > 1) {
     if (bf_size > 1)
-      std::cout << "- Distinct k-mers Bloom filter size       : " << stringifyFileSize(bf_size)
+      std::cout << "- Distinct k-mers Bloom filter size       : " << comma_sep(bf_size)
                 << std::endl;
     if (cbf_size > 1)
-      std::cout << "- Counting Bloom filter size              : " << stringifyFileSize(cbf_size)
+      std::cout << "- Counting Bloom filter size              : " << comma_sep(cbf_size)
                 << std::endl;
   }
   if (out_bloom) {
-    std::cout << "- Output Bloom filter size                : " << stringifyFileSize(hit_size)
-              << std::endl;
+    std::cout << "- Output Bloom filter size                : " << comma_sep(hit_size) << std::endl;
     if (ex_size > 0) {
-      std::cout << "- Excluded k-mers Bloom filter size       : " << stringifyFileSize(ex_size)
+      std::cout << "- Excluded k-mers Bloom filter size       : " << comma_sep(ex_size)
                 << std::endl;
     }
   }

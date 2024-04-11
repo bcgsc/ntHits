@@ -47,7 +47,7 @@ public:
     delete[] entries;
   }
 
-  void insert(const uint64_t hash_value, const std::string& kmer)
+  void insert(const uint64_t hash_value, const std::string& kmer, unsigned n = 1)
   {
     std::string canonical = kmer;
     to_canonical(canonical);
@@ -56,7 +56,7 @@ public:
       j = (hash_value + i) % table_size;
       if (entries[j].kmer == canonical) {
 #pragma omp atomic
-        ++entries[j].count;
+        entries[j].count += n;
       }
       ++i;
     } while (i != table_size && entries[j].count != 0);

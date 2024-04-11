@@ -8,7 +8,7 @@ ntHits is a tool for efficiently counting and filtering k-mers based on their fr
 
 - C++ compiler with c++17 and OpenMP support
 - [Meson](https://mesonbuild.com/)
-- [btllib](https://github.com/bcgsc/btllib) (>=1.5.0)
+- [btllib](https://github.com/bcgsc/btllib) (>=1.7.2)
 - [Catch2](https://github.com/catchorg/Catch2), only for running tests
 
 ntHits uses [argparse](https://github.com/p-ranav/argparse) for command-line argument parsing which is built-in as a submodule (no further installation required).
@@ -64,8 +64,6 @@ Copyright 2022 Canada's Michael Smith Genome Science Centre
 ```
 
 If the output data structure is a Bloom filter (or CBF), it can be queried by either using the `nthits-bfq` tool, or using btllib's API.
-
-**IMPORTANT:** The counts stored in the output CBF are `cmin` less than the actual k-mer counts. In other words, use `kmer_count = cbf.contains(kmer) + cmin` in your applications. The query tool also reports k-mer counts minus `cmin`.
 
 ## ntHits Bloom Filter Query Tool
 

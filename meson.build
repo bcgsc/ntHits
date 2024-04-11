@@ -1,7 +1,7 @@
 project(
     'nthits',
     'cpp',
-    version: '1.0.2',
+    version: '1.0.3',
     license: 'MIT',
     default_options: [
         'cpp_std=c++17',

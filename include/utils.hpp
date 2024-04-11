@@ -93,7 +93,7 @@ get_thresholds(std::vector<uint64_t> histogram,
   }
 
   hit_count = histogram[1];
-  for (unsigned i = 2; i <= min_count + 1; i++)
+  for (unsigned i = 2; i <= min_count; i++)
     hit_count -= histogram[i];
 
   ex_count = histogram[1];
@@ -105,8 +105,7 @@ size_t
 get_bf_size(double num_elements, double num_hashes, int num_seeds, double fpr)
 {
   double r = -num_hashes / log(1.0 - exp(log(fpr) / num_hashes));
-  size_t m = ceil(num_elements * r);
-  return m * std::max(1, num_seeds);
+  return ceil(num_elements * std::max(num_seeds, 1) * r);
 }
 
 }
