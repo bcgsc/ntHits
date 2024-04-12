@@ -8,7 +8,6 @@
 #include <argparse/argparse.hpp>
 #include <btllib/bloom_filter.hpp>
 #include <btllib/counting_bloom_filter.hpp>
-#include <btllib/nthash.hpp>
 #include <btllib/seq_reader.hpp>
 #include <cmath>
 #include <iostream>
